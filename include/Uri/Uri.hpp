@@ -6,10 +6,12 @@
  *
  * This module declares the Uri::Uri class.
  *
- * © 2018 by Richard Walters
+ * © 2019 by YaMing Wu
  */
 
 #include <memory>
+#include <string>
+#include <vector>
 
 namespace Uri {
 
@@ -32,6 +34,62 @@ namespace Uri {
          * This is the default constructor.
          */
         Uri();
+
+        /**
+         * This method set the delimiter for the path
+         *
+         * @param[in] pathDelimiter
+         *
+         */
+        void SetPathDelimiter(const std::string& pathDelimiter);
+
+        /**
+         * This method builds the URI from the elements parsed from
+         * the given string rendering of a URI
+         *
+         * @param[in] uriString
+         *
+         * @return
+         *      An indication of whether or not the URI was parsed successfully
+         */
+        bool ParseFromString(const std::string& uriString);
+
+
+        /**
+         * This method returns the "scheme" element of the URI
+         *
+         * @return
+         *      The "scheme" element of the URI is returned
+         *
+         * @retval ""
+         *      Return "" if no "scheme" element in the URI
+         */
+        std::string GetScheme() const;
+
+        /**
+         * This method returns the "host" element of the URI
+         *
+         * @return
+         *      The "host" element of the URI is returned
+         *
+         * @retval ""
+         *      Return "" if no "scheme" element in the URI
+         */
+        std::string GetHost() const;
+
+        /**
+         * This method returns the "path" element of the URI
+         * as a sequence of steps
+         *
+         * @note
+         *      If the first step of the path is an empty string
+         *      then the path is absolute
+         *
+         * @return
+         *      The "path" element of the URI is returned
+         *
+         */
+        std::vector<std::string> GetPath() const;
 
         // Private properties
     private:

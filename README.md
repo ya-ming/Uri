@@ -48,3 +48,10 @@ For [CMake](https://cmake.org/):
 cd build
 cmake --build . --config Release
 ```
+
+### Testing
+
+```bash
+cd build
+ctest -C Release
+```
