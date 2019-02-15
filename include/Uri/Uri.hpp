@@ -84,6 +84,22 @@ namespace Uri {
          */
         std::vector<std::string> GetPath() const;
 
+        /**
+         * This method returns whether or not the URI includes a port number
+         *
+         * @return
+         *      An indication of whether or not the URI includes a port number
+         */
+        bool HasPort() const;
+
+        /**
+         * This method returns port number of the URI if the URI has port number
+         *
+         * @return
+         *      port number if the URI has port number
+         */
+        uint16_t GetPort() const;
+
         // Private properties
     private:
         /**

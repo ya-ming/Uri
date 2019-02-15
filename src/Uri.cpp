@@ -7,6 +7,7 @@
  */
 
 #include <Uri/Uri.hpp>
+#include <inttypes.h>
 
 namespace Uri {
     /**
@@ -16,6 +17,8 @@ namespace Uri {
         std::string scheme;
         std::string host;
         std::vector<std::string> path;
+        bool hasPort = false;
+        uint16_t port = 0;
     };
 
     Uri::~Uri() = default;
@@ -25,7 +28,7 @@ namespace Uri {
     {
     }
 
-       bool Uri::ParseFromString(const std::string & uriString)
+    bool Uri::ParseFromString(const std::string & uriString)
     {
         // first parse the scheme
         const auto schemeEnd = uriString.find(':');
@@ -33,9 +36,37 @@ namespace Uri {
         auto rest = uriString.substr(schemeEnd + 1);
 
         // next parse the host
+        impl_->hasPort = false;
+        impl_->port = 0;
         if (rest.substr(0, 2) == "//") {
             const auto authorityEnd = rest.find("/", 2);
-            impl_->host = rest.substr(2, authorityEnd - 2);
+            const auto portDelimiter = rest.find(":");
+            if (portDelimiter == std::string::npos) {
+                impl_->host = rest.substr(2, authorityEnd - 2);
+            }
+            else {
+                impl_->host = rest.substr(2, portDelimiter - 2);
+
+                uint32_t newPort = 0;
+                for (auto c : rest.substr(portDelimiter + 1, authorityEnd - portDelimiter - 1)) {
+                    if ((c < '0') || (c > '9')) {
+                        return false;
+                    }
+
+                    newPort *= 10;
+                    newPort += (uint16_t)(c - '0');
+                    // 1 << 16 == 65536         == 000000000001000000000000
+                    // (1 << 16) - 1 == 65535   == 000000000000111111111111
+                    // ~((1 << 16) - 1)         == 111111111111000000000000
+                    if ((newPort & ~((1 << 16) - 1)) != 0) {
+                        return false;
+                    }
+                }
+
+                impl_->port = newPort;
+                impl_->hasPort = true;
+            }
+
             rest = rest.substr(authorityEnd);
         }
         else {
@@ -68,7 +99,6 @@ namespace Uri {
             }
         }
 
-
         return true;
     }
 
@@ -85,6 +115,16 @@ namespace Uri {
     std::vector<std::string> Uri::GetPath() const
     {
         return impl_->path;
+    }
+
+    bool Uri::HasPort() const
+    {
+        return impl_->hasPort;
+    }
+
+    uint16_t Uri::GetPort() const
+    {
+        return impl_->port;
     }
 
 }

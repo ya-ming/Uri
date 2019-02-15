@@ -58,6 +58,36 @@ TEST(UriTests, ParseFromStringPathCornerCases) {
         ASSERT_EQ(testVector.pathOut, uri.GetPath()) << index;
         ++index;
     }
+}
 
+TEST(UriTests, ParseFromStringHasAPortNumber) {
+    Uri::Uri uri;
+    ASSERT_TRUE(uri.ParseFromString("http://www.example.com:8080/foo/bar"));
+    ASSERT_EQ("www.example.com", uri.GetHost());
+    ASSERT_TRUE(uri.HasPort());
+    ASSERT_EQ(8080, uri.GetPort());
+}
 
+TEST(UriTests, ParseFromStringDoseNotHasAPortNumber) {
+    Uri::Uri uri;
+    ASSERT_TRUE(uri.ParseFromString("http://www.example.com/foo/bar"));
+    ASSERT_EQ("www.example.com", uri.GetHost());
+    ASSERT_FALSE(uri.HasPort());
+    ASSERT_EQ(0, uri.GetPort());
+}
+
+TEST(UriTests, ParseFromStringTwiceFirstWithPortNumberThenWithout) {
+    Uri::Uri uri;
+    ASSERT_TRUE(uri.ParseFromString("http://www.example.com:8080/foo/bar"));
+    ASSERT_TRUE(uri.ParseFromString("http://www.example.com/foo/bar"));
+    ASSERT_FALSE(uri.HasPort());
+    ASSERT_EQ(0, uri.GetPort());
+}
+
+TEST(UriTests, ParseFromStringBadPortNumber) {
+    Uri::Uri uri;
+    ASSERT_FALSE(uri.ParseFromString("http://www.example.com:spam/foo/bar"));
+    ASSERT_FALSE(uri.ParseFromString("http://www.example.com:8080spam/foo/bar"));
+    ASSERT_FALSE(uri.ParseFromString("http://www.example.com:65536/foo/bar"));
+    ASSERT_FALSE(uri.ParseFromString("http://www.example.com:-1234/foo/bar"));
 }
