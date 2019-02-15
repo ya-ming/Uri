@@ -16,7 +16,6 @@ namespace Uri {
         std::string scheme;
         std::string host;
         std::vector<std::string> path;
-        std::string pathDelimieter;
     };
 
     Uri::~Uri() = default;
@@ -24,15 +23,9 @@ namespace Uri {
     Uri::Uri()
         : impl_(new Impl)
     {
-        impl_->pathDelimieter = "/";
     }
 
-    void Uri::SetPathDelimiter(const std::string & pathDelimiter)
-    {
-        impl_->pathDelimieter = pathDelimiter;
-    }
-
-    bool Uri::ParseFromString(const std::string & uriString)
+       bool Uri::ParseFromString(const std::string & uriString)
     {
         // first parse the scheme
         const auto schemeEnd = uriString.find(':');
@@ -41,7 +34,7 @@ namespace Uri {
 
         // next parse the host
         if (rest.substr(0, 2) == "//") {
-            const auto authorityEnd = rest.find('/', 2);
+            const auto authorityEnd = rest.find("/", 2);
             impl_->host = rest.substr(2, authorityEnd - 2);
             rest = rest.substr(authorityEnd);
         }
@@ -51,14 +44,14 @@ namespace Uri {
 
         // finally parse the path
         impl_->path.clear();
-        if (rest == impl_->pathDelimieter) {
+        if (rest == "/") {
             // special case of a path that is empty but needs a single
             // empty-string element to indicate that it is absolute
             impl_->path.push_back("");
         }
         else if (!rest.empty()) {
             for (;;) {
-                auto pathDelimiter = rest.find(impl_->pathDelimieter);
+                auto pathDelimiter = rest.find("/");
 
                 if (pathDelimiter == std::string::npos) {
                     impl_->path.push_back(rest);
@@ -69,7 +62,7 @@ namespace Uri {
                         rest.begin(),
                         rest.begin() + pathDelimiter
                     );
-                    rest = rest.substr(pathDelimiter + impl_->pathDelimieter.length());
+                    rest = rest.substr(pathDelimiter + 1);
 
                 }
             }

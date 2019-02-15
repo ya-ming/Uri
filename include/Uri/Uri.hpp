@@ -35,13 +35,6 @@ namespace Uri {
          */
         Uri();
 
-        /**
-         * This method set the delimiter for the path
-         *
-         * @param[in] pathDelimiter
-         *
-         */
-        void SetPathDelimiter(const std::string& pathDelimiter);
 
         /**
          * This method builds the URI from the elements parsed from
@@ -79,7 +72,7 @@ namespace Uri {
 
         /**
          * This method returns the "path" element of the URI
-         * as a sequence of steps
+         * as a sequence of segements
          *
          * @note
          *      If the first step of the path is an empty string
