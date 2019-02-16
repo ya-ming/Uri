@@ -88,7 +88,7 @@ namespace Uri {
          * This method returns whether or not the URI includes a port number
          *
          * @return
-         *      An indication of whether or not the URI includes a port number
+         *      An indication of whether or not the URI includes a port number is returned
          */
         bool HasPort() const;
 
@@ -99,6 +99,22 @@ namespace Uri {
          *      port number if the URI has port number
          */
         uint16_t GetPort() const;
+
+        /**
+         * This method returns whether or not the URI is a relative reference
+         *
+         * @return
+         *      An indication of whether or not the URI is a relative reference is returned
+         */
+        bool IsRelativeReference() const;
+
+        /**
+         * This method returns whether or not the URI constains relative path
+         *
+         * @return
+         *      An indication of whether or not the URI constains relative path is returned
+         */
+        bool ContainsRelativePath() const;
 
         // Private properties
     private:

@@ -101,8 +101,8 @@ Syntax Components
 ----
     query       = *( pchar / "/" / "?" )
     fragment    = *( pchar / "/" / "?" )
-    URI-reference = URI / relative-ref
 ----
+    URI-reference = URI / relative-ref
     relative-ref  = relative-part [ "?" query ] [ "#" fragment ]
 
     relative-part   = "//" authority path-abempty
