@@ -19,6 +19,8 @@ namespace Uri {
         std::vector<std::string> path;
         bool hasPort = false;
         uint16_t port = 0;
+        std::string query;
+        std::string fragment;
     };
 
     Uri::~Uri() = default;
@@ -44,21 +46,25 @@ namespace Uri {
 
         // next parse the host
         impl_->hasPort = false;
+        const auto pathEnd = rest.find_first_of("?#");
+        auto hostAndPathString = rest.substr(0, pathEnd);
+        const auto queryAndOrFragment = rest.substr(hostAndPathString.length());
+
         impl_->port = 0;
-        if (rest.substr(0, 2) == "//") {
-            auto authorityEnd = rest.find("/", 2);
+        if (hostAndPathString.substr(0, 2) == "//") {
+            auto authorityEnd = hostAndPathString.find("/", 2);
             if (authorityEnd == std::string::npos) {
-                authorityEnd = rest.length();
+                authorityEnd = hostAndPathString.length();
             }
-            const auto portDelimiter = rest.find(":");
+            const auto portDelimiter = hostAndPathString.find(":");
             if (portDelimiter == std::string::npos) {
-                impl_->host = rest.substr(2, authorityEnd - 2);
+                impl_->host = hostAndPathString.substr(2, authorityEnd - 2);
             }
             else {
-                impl_->host = rest.substr(2, portDelimiter - 2);
+                impl_->host = hostAndPathString.substr(2, portDelimiter - 2);
 
                 uint32_t newPort = 0;
-                for (auto c : rest.substr(portDelimiter + 1, authorityEnd - portDelimiter - 1)) {
+                for (auto c : hostAndPathString.substr(portDelimiter + 1, authorityEnd - portDelimiter - 1)) {
                     if ((c < '0') || (c > '9')) {
                         return false;
                     }
@@ -77,36 +83,61 @@ namespace Uri {
                 impl_->hasPort = true;
             }
 
-            rest = rest.substr(authorityEnd);
+            hostAndPathString = hostAndPathString.substr(authorityEnd);
         }
         else {
             impl_->host = "";
         }
 
-        // finally parse the path
+        auto pathString = hostAndPathString;
+
+        // next, parse the path
         impl_->path.clear();
-        if (rest == "/") {
+
+        if (pathString == "/") {
             // special case of a path that is empty but needs a single
             // empty-string element to indicate that it is absolute
             impl_->path.push_back("");
+            pathString.clear();
         }
-        else if (!rest.empty()) {
+        else if (!pathString.empty()) {
             for (;;) {
-                auto pathDelimiter = rest.find("/");
+                auto pathDelimiter = pathString.find("/");
 
                 if (pathDelimiter == std::string::npos) {
-                    impl_->path.push_back(rest);
+                    impl_->path.push_back(pathString);
+                    pathString.clear();
                     break;
                 }
                 else {
                     impl_->path.emplace_back(
-                        rest.begin(),
-                        rest.begin() + pathDelimiter
+                        pathString.begin(),
+                        pathString.begin() + pathDelimiter
                     );
-                    rest = rest.substr(pathDelimiter + 1);
+                    pathString = pathString.substr(pathDelimiter + 1);
 
                 }
             }
+        }
+
+        // parse the fragment if there is one
+        const auto fragmentDelimiter = queryAndOrFragment.find('#');
+        if (fragmentDelimiter == std::string::npos) {
+            impl_->fragment.clear();
+            rest = queryAndOrFragment;
+        }
+        else {
+            impl_->fragment = queryAndOrFragment.substr(fragmentDelimiter + 1);
+            rest = queryAndOrFragment.substr(0, fragmentDelimiter);
+        }
+
+
+        // parse the query if there is one
+        if (!rest.empty()) {
+            impl_->query = rest.substr(1);
+        }
+        else {
+            impl_->query.clear();
         }
 
         return true;
@@ -152,4 +183,13 @@ namespace Uri {
         }
     }
 
+    std::string Uri::GetFragment() const
+    {
+        return impl_->fragment;
+    }
+
+    std::string Uri::GetQuery() const
+    {
+        return impl_->query;
+    }
 }

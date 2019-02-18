@@ -8,6 +8,7 @@
 
 #include <gtest/gtest.h>
 #include <Uri/Uri.hpp>
+#include "UriTests.h"
 
 TEST(UriTests, ParseFromStringNoScheme) {
     Uri::Uri uri;
@@ -154,3 +155,37 @@ TEST(UriTests, ParseFromStringRelativePathVsNonRelativePath) {
         ++index;
     }
 }
+
+
+TEST(UriTests, ParseFromStringQueryAndFragmentElements) {
+    struct TestVector {
+        std::string uriString;
+        std::string host;
+        std::string query;
+        std::string fragment;
+    };
+
+    const std::vector<TestVector> testVectors {
+            { "http://www.example.com/", "www.example.com", "", "" },
+            { "http://example.com?foo", "example.com", "foo", "" },
+            { "http://www.example.com#foo", "www.example.com", "", "foo" },
+            { "http://www.example.com/?earth?day#bar", "www.example.com", "earth?day", "bar" },
+            { "http://www.example.com/spam?foo#bar", "www.example.com", "foo", "bar" },
+
+            // maybe this is correct, that having atrailing question mark is
+            // equivalent to not having any question mark.
+            { "http://www.example.com/?", "www.example.com", "", "" },
+
+    };
+
+    size_t index = 0;
+    for (const auto& testVector : testVectors) {
+        Uri::Uri uri;
+        ASSERT_TRUE(uri.ParseFromString(testVector.uriString)) << index;
+        ASSERT_EQ(testVector.host, uri.GetHost()) << index;
+        ASSERT_EQ(testVector.query, uri.GetQuery()) << index;
+        ASSERT_EQ(testVector.fragment, uri.GetFragment()) << index;
+        ++index;
+    }
+}
+

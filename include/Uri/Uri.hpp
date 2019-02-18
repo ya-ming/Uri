@@ -66,7 +66,7 @@ namespace Uri {
          *      The "host" element of the URI is returned
          *
          * @retval ""
-         *      Return "" if no "scheme" element in the URI
+         *      Return "" if no "host" element in the URI
          */
         std::string GetHost() const;
 
@@ -115,6 +115,28 @@ namespace Uri {
          *      An indication of whether or not the URI constains relative path is returned
          */
         bool ContainsRelativePath() const;
+
+        /**
+         * This method returns the "fragment" element of the URI
+         *
+         * @return
+         *      The "fragment" element of the URI is returned
+         *
+         * @retval ""
+         *      Return "" if no "fragment" element in the URI
+         */
+        std::string GetFragment() const;
+
+        /**
+         * This method returns the "query" element of the URI
+         *
+         * @return
+         *      The "query" element of the URI is returned
+         *
+         * @retval ""
+         *      Return "" if no "query" element in the URI
+         */
+        std::string GetQuery() const;
 
         // Private properties
     private:
