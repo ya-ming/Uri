@@ -189,3 +189,26 @@ TEST(UriTests, ParseFromStringQueryAndFragmentElements) {
     }
 }
 
+TEST(UriTests, ParseFromStringUserInfo) {
+    struct TestVector {
+        std::string uriString;
+        std::string userInfo;
+    };
+
+    const std::vector<TestVector> testVectors{
+            { "http://www.example.com/", "" },
+            { "http://joe@www.example.com", "joe" },
+            { "http://bob:password@www.example.com", "bob:password" },
+            { "//www.example.com", "" },
+            { "//bob@www.example.com", "bob" },
+    };
+
+    size_t index = 0;
+    for (const auto& testVector : testVectors) {
+        Uri::Uri uri;
+        ASSERT_TRUE(uri.ParseFromString(testVector.uriString)) << index;
+        ASSERT_EQ(testVector.userInfo, uri.GetUserInfo()) << index;
+        ++index;
+    }
+}
+

@@ -15,6 +15,7 @@ namespace Uri {
      */
     struct Uri::Impl {
         std::string scheme;
+        std::string userInfo;
         std::string host;
         std::vector<std::string> path;
         bool hasPort = false;
@@ -44,27 +45,47 @@ namespace Uri {
             rest = uriString.substr(schemeEnd + 1);
         }
 
-        // next parse the host
+        // next parse the authority
         impl_->hasPort = false;
         const auto pathEnd = rest.find_first_of("?#");
-        auto hostAndPathString = rest.substr(0, pathEnd);
-        const auto queryAndOrFragment = rest.substr(hostAndPathString.length());
+        auto authorityAndPathString = rest.substr(0, pathEnd);
+        const auto queryAndOrFragment = rest.substr(authorityAndPathString.length());
+        std::string hostPortAndPathString;
+
 
         impl_->port = 0;
-        if (hostAndPathString.substr(0, 2) == "//") {
-            auto authorityEnd = hostAndPathString.find("/", 2);
+        if (authorityAndPathString.substr(0, 2) == "//") {
+            // strip off authority marker
+            authorityAndPathString = authorityAndPathString.substr(2);
+
+            // first separate the authority from the path
+            auto authorityEnd = authorityAndPathString.find("/");
             if (authorityEnd == std::string::npos) {
-                authorityEnd = hostAndPathString.length();
+                authorityEnd = authorityAndPathString.length();
             }
-            const auto portDelimiter = hostAndPathString.find(":");
-            if (portDelimiter == std::string::npos) {
-                impl_->host = hostAndPathString.substr(2, authorityEnd - 2);
+
+            // check if there is a UserInfo, and if so, extract it
+            const auto userInfoDelimiter = authorityAndPathString.find('@');
+            if (userInfoDelimiter == std::string::npos) {
+                impl_->userInfo.clear();
+                hostPortAndPathString = authorityAndPathString;
             }
             else {
-                impl_->host = hostAndPathString.substr(2, portDelimiter - 2);
+
+                impl_->userInfo = authorityAndPathString.substr(0, userInfoDelimiter);
+                hostPortAndPathString = authorityAndPathString.substr(userInfoDelimiter + 1);
+            }
+
+            // paring host and port from authority
+            const auto portDelimiter = hostPortAndPathString.find(":");
+            if (portDelimiter == std::string::npos) {
+                impl_->host = hostPortAndPathString.substr(0, authorityEnd);
+            }
+            else {
+                impl_->host = hostPortAndPathString.substr(0, portDelimiter);
 
                 uint32_t newPort = 0;
-                for (auto c : hostAndPathString.substr(portDelimiter + 1, authorityEnd - portDelimiter - 1)) {
+                for (auto c : hostPortAndPathString.substr(portDelimiter + 1, authorityEnd - portDelimiter - 1)) {
                     if ((c < '0') || (c > '9')) {
                         return false;
                     }
@@ -83,13 +104,14 @@ namespace Uri {
                 impl_->hasPort = true;
             }
 
-            hostAndPathString = hostAndPathString.substr(authorityEnd);
+            hostPortAndPathString = authorityAndPathString.substr(authorityEnd);
         }
         else {
-            impl_->host = "";
+            impl_->host.clear();
+            hostPortAndPathString = authorityAndPathString;
         }
 
-        auto pathString = hostAndPathString;
+        auto pathString = hostPortAndPathString;
 
         // next, parse the path
         impl_->path.clear();
@@ -147,6 +169,11 @@ namespace Uri {
     {
         return impl_->scheme;
     }
+
+	std::string Uri::GetUserInfo() const
+	{
+		return impl_->userInfo;
+	}
 
     std::string Uri::GetHost() const
     {
