@@ -9,6 +9,40 @@
 #include <Uri/Uri.hpp>
 #include <inttypes.h>
 
+namespace {
+    /**
+     *  Parse the given string to uint16_t number
+     *
+     *  @Param[in] numberString
+     *      This is the string containing the number to parse.
+     *
+     *  @Param[out] number
+     *      This is where to store the number parsed.
+     *
+     *  @return
+     *      An indication of whether or not the number was parsed successfully is returned.
+    */
+    bool ParseUint16(const std::string& numberString, uint16_t& number) {
+        uint32_t numberIn32bits = 0;
+        for (auto c : numberString) {
+            if ((c < '0') || (c > '9')) {
+                return false;
+            }
+
+            numberIn32bits *= 10;
+            numberIn32bits += (uint16_t)(c - '0');
+            // 1 << 16 == 65536         == 000000000001000000000000
+            // (1 << 16) - 1 == 65535   == 000000000000111111111111
+            // ~((1 << 16) - 1)         == 111111111111000000000000
+            if ((numberIn32bits & ~((1 << 16) - 1)) != 0) {
+                return false;
+            }
+        }
+        number = numberIn32bits;
+        return true;
+    }
+}
+
 namespace Uri {
     /**
      * This contains the private properties of a Uri instance.
@@ -50,9 +84,8 @@ namespace Uri {
         const auto pathEnd = rest.find_first_of("?#");
         auto authorityAndPathString = rest.substr(0, pathEnd);
         const auto queryAndOrFragment = rest.substr(authorityAndPathString.length());
-        std::string hostPortAndPathString;
 
-
+        std::string pathString;
         impl_->port = 0;
         if (authorityAndPathString.substr(0, 2) == "//") {
             // strip off authority marker
@@ -63,9 +96,12 @@ namespace Uri {
             if (authorityEnd == std::string::npos) {
                 authorityEnd = authorityAndPathString.length();
             }
+            pathString = authorityAndPathString.substr(authorityEnd);
 
             // check if there is a UserInfo, and if so, extract it
             const auto userInfoDelimiter = authorityAndPathString.find('@');
+            std::string hostPortAndPathString;
+
             if (userInfoDelimiter == std::string::npos) {
                 impl_->userInfo.clear();
                 hostPortAndPathString = authorityAndPathString;
@@ -85,22 +121,10 @@ namespace Uri {
                 impl_->host = hostPortAndPathString.substr(0, portDelimiter);
 
                 uint32_t newPort = 0;
-                for (auto c : hostPortAndPathString.substr(portDelimiter + 1, authorityEnd - portDelimiter - 1)) {
-                    if ((c < '0') || (c > '9')) {
-                        return false;
-                    }
 
-                    newPort *= 10;
-                    newPort += (uint16_t)(c - '0');
-                    // 1 << 16 == 65536         == 000000000001000000000000
-                    // (1 << 16) - 1 == 65535   == 000000000000111111111111
-                    // ~((1 << 16) - 1)         == 111111111111000000000000
-                    if ((newPort & ~((1 << 16) - 1)) != 0) {
-                        return false;
-                    }
+                if (!ParseUint16(hostPortAndPathString.substr(portDelimiter + 1, authorityEnd - portDelimiter - 1), impl_->port)) {
+                    return false;
                 }
-
-                impl_->port = newPort;
                 impl_->hasPort = true;
             }
 
@@ -108,10 +132,8 @@ namespace Uri {
         }
         else {
             impl_->host.clear();
-            hostPortAndPathString = authorityAndPathString;
+            pathString = authorityAndPathString;
         }
-
-        auto pathString = hostPortAndPathString;
 
         // next, parse the path
         impl_->path.clear();
