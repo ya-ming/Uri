@@ -103,6 +103,14 @@ TEST(UriTests, ParseFromStringTwiceFirstWithPortNumberThenWithout) {
     ASSERT_EQ(0, uri.GetPort());
 }
 
+TEST(UriTests, ParseFromStringTwiceFirstUserInfothenWithoutPort) {
+    Uri::Uri uri;
+    ASSERT_TRUE(uri.ParseFromString("http://joe@www.example.com/foo/bar"));
+    ASSERT_FALSE(uri.GetUserInfo().empty());
+    ASSERT_TRUE(uri.ParseFromString("/foo/bar"));
+    ASSERT_TRUE(uri.GetUserInfo().empty());
+}
+
 TEST(UriTests, ParseFromStringBadPortNumber) {
     Uri::Uri uri;
     ASSERT_FALSE(uri.ParseFromString("http://www.example.com:spam/foo/bar"));

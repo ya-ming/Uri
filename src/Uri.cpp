@@ -80,7 +80,6 @@ namespace Uri {
         }
 
         // next parse the authority
-        impl_->hasPort = false;
         const auto pathEnd = rest.find_first_of("?#");
         auto authorityAndPathString = rest.substr(0, pathEnd);
         const auto queryAndOrFragment = rest.substr(authorityAndPathString.length());
@@ -97,40 +96,43 @@ namespace Uri {
                 authorityEnd = authorityAndPathString.length();
             }
             pathString = authorityAndPathString.substr(authorityEnd);
+            auto authorityString = authorityAndPathString.substr(0, authorityEnd);
 
-            // check if there is a UserInfo, and if so, extract it
-            const auto userInfoDelimiter = authorityAndPathString.find('@');
-            std::string hostPortAndPathString;
+            // Next, check if there is a UserInfo, and if so, extract it
+            const auto userInfoDelimiter = authorityString.find('@');
+            std::string hostPortString;
 
             if (userInfoDelimiter == std::string::npos) {
                 impl_->userInfo.clear();
-                hostPortAndPathString = authorityAndPathString;
+                hostPortString = authorityString;
             }
             else {
-
-                impl_->userInfo = authorityAndPathString.substr(0, userInfoDelimiter);
-                hostPortAndPathString = authorityAndPathString.substr(userInfoDelimiter + 1);
+                impl_->userInfo = authorityString.substr(0, userInfoDelimiter);
+                hostPortString = authorityString.substr(userInfoDelimiter + 1);
             }
 
             // paring host and port from authority
-            const auto portDelimiter = hostPortAndPathString.find(":");
+            const auto portDelimiter = hostPortString.find(":");
             if (portDelimiter == std::string::npos) {
-                impl_->host = hostPortAndPathString.substr(0, authorityEnd);
+                impl_->host = hostPortString;
+                impl_->hasPort = false;
             }
             else {
-                impl_->host = hostPortAndPathString.substr(0, portDelimiter);
+                impl_->host = hostPortString.substr(0, portDelimiter);
 
-                uint32_t newPort = 0;
+                const auto portString = hostPortString.substr(portDelimiter + 1);
 
-                if (!ParseUint16(hostPortAndPathString.substr(portDelimiter + 1, authorityEnd - portDelimiter - 1), impl_->port)) {
+                if (!ParseUint16(portString, impl_->port)) {
                     return false;
                 }
                 impl_->hasPort = true;
             }
 
-            hostPortAndPathString = authorityAndPathString.substr(authorityEnd);
+            hostPortString = authorityAndPathString.substr(authorityEnd);
         }
         else {
+            impl_->hasPort = false;
+            impl_->userInfo.clear();
             impl_->host.clear();
             pathString = authorityAndPathString;
         }
