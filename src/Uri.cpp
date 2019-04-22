@@ -6,6 +6,8 @@
  * © 2019 by YaMing Wu
  */
 
+#include <functional>
+#include <memory>
 #include <Uri/Uri.hpp>
 #include <inttypes.h>
 
@@ -21,7 +23,7 @@ namespace {
      *
      *  @return
      *      An indication of whether or not the number was parsed successfully is returned.
-    */
+     */
     bool ParseUint16(const std::string& numberString, uint16_t& number) {
         uint32_t numberIn32bits = 0;
         for (auto c : numberString) {
@@ -40,6 +42,82 @@ namespace {
         }
         number = numberIn32bits;
         return true;
+    }
+
+    /**
+     *  This function takes a given "stillPassing" strategy
+     *  and invokes it on the sequence of characters in the given
+     *  string, to check if the string passes or not.
+     *
+     *  @Param[in] numberString
+     *      This is the string containing the number to parse.
+     *
+     *  @Param[out] number
+     *      This is where to store the number parsed.
+     *
+     *  @return
+     *      An indication of whether or not the number was parsed successfully is returned.
+     */
+    bool FailsMatch(
+        const std::string candidate,
+        std::function< bool(char, bool)> stillPassing
+    ) {
+        for (const auto c : candidate) {
+            if (!stillPassing(c, false)) {
+                return true;
+            }
+        }
+        return !stillPassing(' ', true);
+    }
+
+    /**
+    * This function returns a strategy function that
+    * may be used with the FailsMatch function to test a scheme
+    * to make sure it is legalaccording to the standard.
+    *
+    * @return
+    *       The strategy function.
+    */
+    std::function< bool(char, bool) > LegalSchemeCheckStrategy(
+//        char c,
+//        bool end
+    ) {
+        auto isFirstCharacter = std::make_shared< bool >(true);
+        *isFirstCharacter = true;
+        return [isFirstCharacter](char c, bool end) {
+            if (end) {
+                return !*isFirstCharacter;
+            }
+            else {
+                bool check;
+                if (*isFirstCharacter) {
+                    check = (
+                        (
+                        (c >= 'a') && (c <= 'z')
+                            ||
+                            (c >= 'A') && (c <= 'Z')
+                            )
+                        );
+                }
+                else {
+                    check = (
+                        (
+                        (c >= 'a') && (c <= 'z')
+                            ||
+                            (c >= 'A') && (c <= 'Z')
+                            ||
+                            (c >= '0') && (c <= '9')
+                            || (c == '+')
+                            || (c == '-')
+                            || (c == '.')
+
+                            )
+                        );
+                }
+                *isFirstCharacter = false;
+                return check;
+            }
+        };
     }
 }
 
@@ -64,11 +142,15 @@ namespace Uri {
          * This method builds the internal path element sequence
          * by parsing it from the given sring.
          *
-         * @param[in] pathString
-         *      This is the string containing the whole path of the URI.
+         * @param[in] candidate
+         *      This is the string to test.
+         *
+         * @param[in] stillPassing
+         *      This is the strategy to invoke in order to test the string.
          *
          * @return
-         *      An indication if the path was parsed correctly or not is returned.
+         *      An indication of whether or not the given candidate string
+         *      passes the test is returned.
          */
         bool ParsePath(std::string pathString) {
             path.clear();
@@ -163,6 +245,17 @@ namespace Uri {
         }
         else {
             impl_->scheme = uriString.substr(0, schemeEnd);
+
+            bool isFirstCharacter = true;
+            if (
+                FailsMatch(
+                    impl_->scheme,
+                    LegalSchemeCheckStrategy()
+                )
+            ) {
+                return false;
+            }
+
             rest = uriString.substr(schemeEnd + 1);
         }
 

@@ -220,3 +220,44 @@ TEST(UriTests, ParseFromStringUserInfo) {
     }
 }
 
+TEST(UriTests, ParseFromStringSchemeIllegalCharacters) {
+    const std::vector<std::string> testVectors{
+            { "://www.example.com/"},
+            { "0://www.example.com/"},
+            { "+://www.example.com/"},
+            { "@://www.example.com/"},
+            { ".://www.example.com/"},
+            { "h@://www.example.com/"},
+    };
+
+    size_t index = 0;
+    for (const auto& testVector : testVectors) {
+        Uri::Uri uri;
+        ASSERT_FALSE(uri.ParseFromString(testVector)) << index;
+        ++index;
+    }
+}
+
+TEST(UriTests, ParseFromStringSchemeBarelyLegal) {
+    struct TestVector {
+        std::string uriString;
+        std::string scheme;
+    };
+
+    const std::vector<TestVector> testVectors{
+            { "h://www.example.com/", "h"},
+            { "x+://www.example.com/", "x+"},
+            { "y-://www.example.com/", "y-"},
+            { "z.://www.example.com/", "z."},
+            { "aa://www.example.com/", "aa"},
+            { "a0://www.example.com/", "a0"},
+    };
+
+    size_t index = 0;
+    for (const auto& testVector : testVectors) {
+        Uri::Uri uri;
+        ASSERT_TRUE(uri.ParseFromString(testVector.uriString)) << index;
+        ASSERT_EQ(testVector.scheme, uri.GetScheme()) << index;
+        ++index;
+    }
+}
