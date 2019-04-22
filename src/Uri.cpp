@@ -48,6 +48,7 @@ namespace Uri {
      * This contains the private properties of a Uri instance.
      */
     struct Uri::Impl {
+        // Parameters
         std::string scheme;
         std::string userInfo;
         std::string host;
@@ -56,6 +57,48 @@ namespace Uri {
         uint16_t port = 0;
         std::string query;
         std::string fragment;
+
+        // Methods
+
+        /**
+         * This method builds the internal path element sequence
+         * by parsing it from the given sring.
+         * @param[in] pathString
+         *      This is the string containing the whole path of the URI.
+         *
+         * @return
+         *      An indication if the path was parsed correctly or not is returned.
+         */
+        bool ParsePath(std::string pathString) {
+            path.clear();
+
+            if (pathString == "/") {
+                // special case of a path that is empty but needs a single
+                // empty-string element to indicate that it is absolute
+                path.push_back("");
+                pathString.clear();
+            }
+            else if (!pathString.empty()) {
+                for (;;) {
+                    auto pathDelimiter = pathString.find("/");
+
+                    if (pathDelimiter == std::string::npos) {
+                        path.push_back(pathString);
+                        pathString.clear();
+                        break;
+                    }
+                    else {
+                        path.emplace_back(
+                            pathString.begin(),
+                            pathString.begin() + pathDelimiter
+                        );
+                        pathString = pathString.substr(pathDelimiter + 1);
+
+                    }
+                }
+            }
+            return true;
+        }
     };
 
     Uri::~Uri() = default;
@@ -138,32 +181,8 @@ namespace Uri {
         }
 
         // next, parse the path
-        impl_->path.clear();
-
-        if (pathString == "/") {
-            // special case of a path that is empty but needs a single
-            // empty-string element to indicate that it is absolute
-            impl_->path.push_back("");
-            pathString.clear();
-        }
-        else if (!pathString.empty()) {
-            for (;;) {
-                auto pathDelimiter = pathString.find("/");
-
-                if (pathDelimiter == std::string::npos) {
-                    impl_->path.push_back(pathString);
-                    pathString.clear();
-                    break;
-                }
-                else {
-                    impl_->path.emplace_back(
-                        pathString.begin(),
-                        pathString.begin() + pathDelimiter
-                    );
-                    pathString = pathString.substr(pathDelimiter + 1);
-
-                }
-            }
+        if (!impl_->ParsePath(pathString)) {
+            return false;
         }
 
         // parse the fragment if there is one
