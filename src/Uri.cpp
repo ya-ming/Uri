@@ -70,6 +70,21 @@ namespace {
         return !stillPassing(' ', true);
     }
 
+    bool IsCharacterInSet(
+        char c,
+        std::initializer_list< char > characterSet
+        ) {
+        for (auto charInSet = characterSet.begin();
+            charInSet != characterSet.end();
+            ++charInSet) {
+            const auto first = *charInSet++;
+            const auto last = *charInSet;
+            if ((c >= first) && (c <= last))
+                return true;
+        }
+        return false;
+    }
+
     /**
     * This function returns a strategy function that
     * may be used with the FailsMatch function to test a scheme
@@ -91,28 +106,10 @@ namespace {
             else {
                 bool check;
                 if (*isFirstCharacter) {
-                    check = (
-                        (
-                        (c >= 'a') && (c <= 'z')
-                            ||
-                            (c >= 'A') && (c <= 'Z')
-                            )
-                        );
+                    check = IsCharacterInSet(c, { 'a', 'z', 'A', 'Z' });
                 }
                 else {
-                    check = (
-                        (
-                        (c >= 'a') && (c <= 'z')
-                            ||
-                            (c >= 'A') && (c <= 'Z')
-                            ||
-                            (c >= '0') && (c <= '9')
-                            || (c == '+')
-                            || (c == '-')
-                            || (c == '.')
-
-                            )
-                        );
+                    check = IsCharacterInSet(c, { 'a', 'z', 'A', 'Z', '0', '9', '+', '+', '-', '-', '.', '.' });
                 }
                 *isFirstCharacter = false;
                 return check;
@@ -203,7 +200,62 @@ namespace Uri {
                 hostPortString = authorityString;
             }
             else {
-                userInfo = authorityString.substr(0, userInfoDelimiter);
+                const auto userInfoEncoded = authorityString.substr(0, userInfoDelimiter);
+                size_t decoderState = 0;
+                int decodedCharacter = 0;
+                for (const auto c : userInfoEncoded) {
+                    switch (decoderState) {
+                        case 0: {
+                            if (c == '%') {
+                                decoderState = 1;
+                            }
+                            else {
+                                if (IsCharacterInSet(c, { 'a', 'z', 'A', 'Z', '0', '9',
+                                    '-', '-', '.', '.', '_', '_', '~', '~', ':', ':',
+                                    '!', '!', '$', '$', '&', '&', '\'', '\'',
+                                    '(', '(', ')', ')', '*', '*', '+', '+', ',', ',',
+                                    ';', ';', '=', '=',
+                                    })) {
+                                    userInfo.push_back(c);
+                                }
+                                else {
+                                    return false;
+                                }
+                                    
+                            }
+                            break;
+                        }
+                        case 1: {
+                            if (IsCharacterInSet(c, { '0', '9' })) {
+                                decodedCharacter = (int)(c - '0');
+                                decoderState = 2;
+                            }
+                            else if (IsCharacterInSet(c, { 'A', 'F' })) {
+                                decodedCharacter = (int)(c - 'A') + 10;
+                                decoderState = 2;
+                            }
+                            else {
+                                return false;
+                            }
+                            break;
+                        }
+                        case 2: {
+                            decoderState = 0;
+                            decodedCharacter <<= 4;
+                            if (IsCharacterInSet(c, { '0', '9' })) {
+                                decodedCharacter += (int)(c - '0');
+                            }
+                            else if (IsCharacterInSet(c, { 'A', 'F' })) {
+                                decodedCharacter += (int)(c - 'A') + 10;
+                            }
+                            else {
+                                return false;
+                            }
+                            userInfo.push_back((char)decodedCharacter);
+                            break;
+                        }
+                    }
+                }
                 hostPortString = authorityString.substr(userInfoDelimiter + 1);
             }
 

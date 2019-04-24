@@ -111,3 +111,10 @@ Syntax Components
                     / path-empty
 ----
     absolute-URI  = scheme ":" hier-part [ "?" query ]
+___
+    unreserved  = ALPHA / DIGIT / "-" / "." / "_" / "~"
+    reserved    = gen-delims / sub-delims
+    gen-delims  = ":" / "/" / "?" / "#" / "[" / "]" / "@"
+    sub-delims  = "!" / "$" / "&" / "'" / "(" / ")"
+                  / "*" / "+" / "," / ";" / "="
+    pct-encoded = "%" HEXDIG HEXDIG
