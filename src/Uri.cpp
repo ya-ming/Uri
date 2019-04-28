@@ -116,6 +116,90 @@ namespace {
             }
         };
     }
+
+    /**
+     * This method checks and decodes the given path queryOrFragment
+     *
+     * @param[in, out] queryOrFragment
+     *      On input, this is the queryOrFragment to check and decode.
+     *      On output, this is the decoded queryOrFragment.
+     *
+     * @return
+     *      An indication of whether or not the given queryOrFragment
+     *      passes all the checks and was decoded successfully is returned.
+     */
+    bool DecodeQueryOrFragment(std::string& queryOrFragment) {
+        const auto originalQueryOrFragment = std::move(queryOrFragment);
+        queryOrFragment.clear();
+
+        size_t decoderState = 0;
+        int decodedCharacter = 0;
+        for (const auto c : originalQueryOrFragment) {
+            switch (decoderState) {
+            case 0: {
+                if (c == '%') {
+                    decoderState = 1;
+                }
+                else {
+                    if (IsCharacterInSet(c, {
+                        // unreserved
+                        'a', 'z', 'A', 'Z', // ALPHA
+                        '0', '9', // DIGIT
+                        '-', '-', '.', '.', '_', '_', '~', '~',
+
+                        // sub-delims
+                        '!', '!', '$', '$', '&', '&', '\'', '\'',
+                        '(', '(', ')', ')', '*', '*', '+', '+', ',', ',',
+                        ';', ';', '=', '=',
+
+                        // (also allowed in pchar)
+                        ':', ':', '@', '@',
+
+                        // (also allowed in query or fragment)
+                        '/', '/', '?', '?',
+                        })) {
+                        queryOrFragment.push_back(c);
+                    }
+                    else {
+                        return false;
+                    }
+
+                }
+                break;
+            }
+            case 1: {
+                if (IsCharacterInSet(c, { '0', '9' })) {
+                    decodedCharacter = (int)(c - '0');
+                    decoderState = 2;
+                }
+                else if (IsCharacterInSet(c, { 'A', 'F' })) {
+                    decodedCharacter = (int)(c - 'A') + 10;
+                    decoderState = 2;
+                }
+                else {
+                    return false;
+                }
+                break;
+            }
+            case 2: {
+                decoderState = 0;
+                decodedCharacter <<= 4;
+                if (IsCharacterInSet(c, { '0', '9' })) {
+                    decodedCharacter += (int)(c - '0');
+                }
+                else if (IsCharacterInSet(c, { 'A', 'F' })) {
+                    decodedCharacter += (int)(c - 'A') + 10;
+                }
+                else {
+                    return false;
+                }
+                queryOrFragment.push_back((char)decodedCharacter);
+                break;
+            }
+            }
+        }
+        return true;
+    }
 }
 
 namespace Uri {
@@ -600,6 +684,9 @@ namespace Uri {
             impl_->fragment = queryAndOrFragment.substr(fragmentDelimiter + 1);
             rest = queryAndOrFragment.substr(0, fragmentDelimiter);
         }
+        if (!DecodeQueryOrFragment(impl_->fragment)) {
+            return false;
+        }
 
 
         // parse the query if there is one
@@ -608,6 +695,10 @@ namespace Uri {
         }
         else {
             impl_->query.clear();
+        }
+
+        if (!DecodeQueryOrFragment(impl_->query)) {
+            return false;
         }
 
         return true;
