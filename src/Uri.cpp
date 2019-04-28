@@ -136,6 +136,87 @@ namespace Uri {
         // Methods
 
         /**
+         * This method checks and decodes the given path segements
+         *
+         * @param[in, out] segement
+         *      On input, this is the path segment to check and decode.
+         *      On output, this is the decoded path segement.
+         *
+         * @return
+         *      An indication of whether or not the given path segement
+         *      passes all the checks and was decoded successfully is returned.
+         */
+        bool DecodePathSegement(std::string& segement) {
+            const auto originalSegement = std::move(segement);
+            segement.clear();
+
+            size_t decoderState = 0;
+            int decodedCharacter = 0;
+            for (const auto c : originalSegement) {
+                switch (decoderState) {
+                    case 0: {
+                        if (c == '%') {
+                            decoderState = 1;
+                        }
+                        else {
+                            if (IsCharacterInSet(c, {
+                                // unreserved
+                                'a', 'z', 'A', 'Z', // ALPHA
+                                '0', '9', // DIGIT
+                                '-', '-', '.', '.', '_', '_', '~', '~',
+
+                                // sub-delims
+                                '!', '!', '$', '$', '&', '&', '\'', '\'',
+                                '(', '(', ')', ')', '*', '*', '+', '+', ',', ',',
+                                ';', ';', '=', '=',
+
+                                // (also allowed in segment or pchar)
+                                ':', ':', '@', '@',
+                                })) {
+                                segement.push_back(c);
+                            }
+                            else {
+                                return false;
+                            }
+
+                        }
+                        break;
+                    }
+                    case 1: {
+                        if (IsCharacterInSet(c, { '0', '9' })) {
+                            decodedCharacter = (int)(c - '0');
+                            decoderState = 2;
+                        }
+                        else if (IsCharacterInSet(c, { 'A', 'F' })) {
+                            decodedCharacter = (int)(c - 'A') + 10;
+                            decoderState = 2;
+                        }
+                        else {
+                            return false;
+                        }
+                        break;
+                    }
+                    case 2: {
+                        decoderState = 0;
+                        decodedCharacter <<= 4;
+                        if (IsCharacterInSet(c, { '0', '9' })) {
+                            decodedCharacter += (int)(c - '0');
+                        }
+                        else if (IsCharacterInSet(c, { 'A', 'F' })) {
+                            decodedCharacter += (int)(c - 'A') + 10;
+                        }
+                        else {
+                            return false;
+                        }
+                        segement.push_back((char)decodedCharacter);
+                        break;
+                    }
+                }
+            }
+            return true;
+        }
+
+        /**
          * This method builds the internal path element sequence
          * by parsing it from the given sring.
          *
@@ -175,6 +256,11 @@ namespace Uri {
                         pathString = pathString.substr(pathDelimiter + 1);
 
                     }
+                }
+            }
+            for (auto& segement : path) {
+                if (!DecodePathSegement(segement)) {
+                    return false;
                 }
             }
             return true;
@@ -436,12 +522,16 @@ namespace Uri {
 
     bool Uri::ParseFromString(const std::string & uriString)
     {
-        // first parse the scheme
-        auto authorityDelimiter = uriString.find("//");
-        if (authorityDelimiter == std::string::npos) {
-            authorityDelimiter = uriString.length();
+        // First parse the scheme
+        // Limit our search so we don't scan into the authority
+        // or path elements, because these may have the colon
+        // character as well, which we might misinterpret
+        // as the scheme delimiter.
+        auto authorityOrPathDelimiterStart = uriString.find('/');
+        if (authorityOrPathDelimiterStart == std::string::npos) {
+            authorityOrPathDelimiterStart = uriString.length();
         }
-        const auto schemeEnd = uriString.substr(0, authorityDelimiter).find(':');
+        const auto schemeEnd = uriString.substr(0, authorityOrPathDelimiterStart).find(':');
         std::string rest;
         if (schemeEnd == std::string::npos) {
             impl_->scheme.clear();
