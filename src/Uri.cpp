@@ -70,6 +70,20 @@ namespace {
         return !stillPassing(' ', true);
     }
 
+    /**
+     *  This function determines whether or not the given character
+     *  is in the given character set.
+     *
+     *  @Param[in] c
+     *      This is the character to check.
+     *
+     *  @Param[in] characterSet
+     *      This is the set of characters that are allowed.
+     *
+     *  @return
+     *      An indication of whether or not the given character
+     *      is in the given character set is returned.
+     */
     bool IsCharacterInSet(
         char c,
         std::initializer_list< char > characterSet
@@ -118,6 +132,98 @@ namespace {
     }
 
     /**
+     * This class can take in a percent-encoded character,
+     * decode it and also detect if there are any problems in the encoding.
+     */
+    class DecodePercentEncodedCharacter {
+        // Methods
+    public:
+        /**
+         * This method inputs the next encoded character.
+         *
+         * @param[in] c
+         *      This is the next encoded character to give to the decoder.
+         *
+         * @return
+         *      An indication of wheter or not the encoded character
+         *      was accepted is returned.
+         */
+        bool NextEncodedCharacter(char c) {
+            switch (decoderState_) {
+            case 0: { // % ...
+                decoderState_ = 1;
+
+                if (IsCharacterInSet(c, { '0', '9' })) {
+                    decodedCharacter_ = (int)(c - '0');
+                }
+                else if (IsCharacterInSet(c, { 'A', 'F' })) {
+                    decodedCharacter_ = (int)(c - 'A') + 10;
+                }
+                else {
+                    return false;
+                }
+                break;
+            }
+            case 1: { // %[0-9A-F]
+                decoderState_ = 2;
+                decodedCharacter_ <<= 4;
+                if (IsCharacterInSet(c, { '0', '9' })) {
+                    decodedCharacter_ += (int)(c - '0');
+                }
+                else if (IsCharacterInSet(c, { 'A', 'F' })) {
+                    decodedCharacter_ += (int)(c - 'A') + 10;
+                }
+                else {
+                    return false;
+                }
+                break;
+            }
+            default:
+                break;
+            }
+            return true;
+        }
+
+        /**
+         * This method checks to see if the decoder is done
+         * and has decoded the encoded character.
+         *
+         * @return
+         *      An indication of wheter or not the decoder is done
+         *      and has decoded the encoded character is returned.
+         */
+        bool Done() const {
+            return (decoderState_ == 2);
+        }
+
+        /**
+         * This method returns the decoded character, once the
+         * decoder is done.
+         *
+         * @return
+         *      The decoded character is returned.
+         */
+        char GetDecodedCharacter() const {
+            return (char)decodedCharacter_;
+        }
+
+        // Properties
+    private:
+        /**
+         * This is the decoded character
+         */
+        int decodedCharacter_ = 0;
+
+        /**
+         * This is the current state of the decoder's state machine
+         * - 0: we haven't yet received the first hex digit.
+         * - 1: we received the first hex digit but not the second.
+         * - 2: we received both hex digits.
+         */
+        size_t decoderState_ = 0;
+    };
+
+    /**
      * This method checks and decodes the given path queryOrFragment
      *
      * @param[in, out] queryOrFragment
@@ -134,10 +240,79 @@ namespace {
 
         size_t decoderState = 0;
         int decodedCharacter = 0;
+        DecodePercentEncodedCharacter pecDecoder;
         for (const auto c : originalQueryOrFragment) {
+            switch (decoderState) {
+                case 0: {
+                    if (c == '%') {
+                        pecDecoder = DecodePercentEncodedCharacter();
+                        decoderState = 1;
+                    }
+                    else {
+                        if (IsCharacterInSet(c, {
+                            // unreserved
+                            'a', 'z', 'A', 'Z', // ALPHA
+                            '0', '9', // DIGIT
+                            '-', '-', '.', '.', '_', '_', '~', '~',
+
+                            // sub-delims
+                            '!', '!', '$', '$', '&', '&', '\'', '\'',
+                            '(', '(', ')', ')', '*', '*', '+', '+', ',', ',',
+                            ';', ';', '=', '=',
+
+                            // (also allowed in pchar)
+                            ':', ':', '@', '@',
+
+                            // (also allowed in query or fragment)
+                            '/', '/', '?', '?',
+                            })) {
+                            queryOrFragment.push_back(c);
+                        }
+                        else {
+                            return false;
+                        }
+
+                    }
+                    break;
+                }
+                case 1: {
+                    if (!pecDecoder.NextEncodedCharacter(c)) {
+                        return false;
+                    }
+                    if (pecDecoder.Done()) {
+                        decoderState = 0;
+                        queryOrFragment.push_back((char)pecDecoder.GetDecodedCharacter());
+                    }
+                    break;
+                }
+            }
+        }
+        return true;
+    }
+
+    /**
+     * This method checks and decodes the given path segements
+     *
+     * @param[in, out] segement
+     *      On input, this is the path segment to check and decode.
+     *      On output, this is the decoded path segement.
+     *
+     * @return
+     *      An indication of whether or not the given path segement
+     *      passes all the checks and was decoded successfully is returned.
+     */
+    bool DecodePathSegement(std::string& segement) {
+        const auto originalSegement = std::move(segement);
+        segement.clear();
+
+        size_t decoderState = 0;
+        int decodedCharacter = 0;
+        DecodePercentEncodedCharacter pecDecoder;
+        for (const auto c : originalSegement) {
             switch (decoderState) {
             case 0: {
                 if (c == '%') {
+                    pecDecoder = DecodePercentEncodedCharacter();
                     decoderState = 1;
                 }
                 else {
@@ -152,13 +327,10 @@ namespace {
                         '(', '(', ')', ')', '*', '*', '+', '+', ',', ',',
                         ';', ';', '=', '=',
 
-                        // (also allowed in pchar)
+                        // (also allowed in segment or pchar)
                         ':', ':', '@', '@',
-
-                        // (also allowed in query or fragment)
-                        '/', '/', '?', '?',
                         })) {
-                        queryOrFragment.push_back(c);
+                        segement.push_back(c);
                     }
                     else {
                         return false;
@@ -168,32 +340,13 @@ namespace {
                 break;
             }
             case 1: {
-                if (IsCharacterInSet(c, { '0', '9' })) {
-                    decodedCharacter = (int)(c - '0');
-                    decoderState = 2;
-                }
-                else if (IsCharacterInSet(c, { 'A', 'F' })) {
-                    decodedCharacter = (int)(c - 'A') + 10;
-                    decoderState = 2;
-                }
-                else {
+                if (!pecDecoder.NextEncodedCharacter(c)) {
                     return false;
                 }
-                break;
-            }
-            case 2: {
-                decoderState = 0;
-                decodedCharacter <<= 4;
-                if (IsCharacterInSet(c, { '0', '9' })) {
-                    decodedCharacter += (int)(c - '0');
+                if (pecDecoder.Done()) {
+                    decoderState = 0;
+                    segement.push_back((char)pecDecoder.GetDecodedCharacter());
                 }
-                else if (IsCharacterInSet(c, { 'A', 'F' })) {
-                    decodedCharacter += (int)(c - 'A') + 10;
-                }
-                else {
-                    return false;
-                }
-                queryOrFragment.push_back((char)decodedCharacter);
                 break;
             }
             }
@@ -218,87 +371,6 @@ namespace Uri {
         std::string fragment;
 
         // Methods
-
-        /**
-         * This method checks and decodes the given path segements
-         *
-         * @param[in, out] segement
-         *      On input, this is the path segment to check and decode.
-         *      On output, this is the decoded path segement.
-         *
-         * @return
-         *      An indication of whether or not the given path segement
-         *      passes all the checks and was decoded successfully is returned.
-         */
-        bool DecodePathSegement(std::string& segement) {
-            const auto originalSegement = std::move(segement);
-            segement.clear();
-
-            size_t decoderState = 0;
-            int decodedCharacter = 0;
-            for (const auto c : originalSegement) {
-                switch (decoderState) {
-                    case 0: {
-                        if (c == '%') {
-                            decoderState = 1;
-                        }
-                        else {
-                            if (IsCharacterInSet(c, {
-                                // unreserved
-                                'a', 'z', 'A', 'Z', // ALPHA
-                                '0', '9', // DIGIT
-                                '-', '-', '.', '.', '_', '_', '~', '~',
-
-                                // sub-delims
-                                '!', '!', '$', '$', '&', '&', '\'', '\'',
-                                '(', '(', ')', ')', '*', '*', '+', '+', ',', ',',
-                                ';', ';', '=', '=',
-
-                                // (also allowed in segment or pchar)
-                                ':', ':', '@', '@',
-                                })) {
-                                segement.push_back(c);
-                            }
-                            else {
-                                return false;
-                            }
-
-                        }
-                        break;
-                    }
-                    case 1: {
-                        if (IsCharacterInSet(c, { '0', '9' })) {
-                            decodedCharacter = (int)(c - '0');
-                            decoderState = 2;
-                        }
-                        else if (IsCharacterInSet(c, { 'A', 'F' })) {
-                            decodedCharacter = (int)(c - 'A') + 10;
-                            decoderState = 2;
-                        }
-                        else {
-                            return false;
-                        }
-                        break;
-                    }
-                    case 2: {
-                        decoderState = 0;
-                        decodedCharacter <<= 4;
-                        if (IsCharacterInSet(c, { '0', '9' })) {
-                            decodedCharacter += (int)(c - '0');
-                        }
-                        else if (IsCharacterInSet(c, { 'A', 'F' })) {
-                            decodedCharacter += (int)(c - 'A') + 10;
-                        }
-                        else {
-                            return false;
-                        }
-                        segement.push_back((char)decodedCharacter);
-                        break;
-                    }
-                }
-            }
-            return true;
-        }
 
         /**
          * This method builds the internal path element sequence
@@ -373,10 +445,12 @@ namespace Uri {
                 const auto userInfoEncoded = authorityString.substr(0, userInfoDelimiter);
                 size_t decoderState = 0;
                 int decodedCharacter = 0;
+                DecodePercentEncodedCharacter pecDecoder;
                 for (const auto c : userInfoEncoded) {
                     switch (decoderState) {
                         case 0: {
                             if (c == '%') {
+                                pecDecoder = DecodePercentEncodedCharacter();
                                 decoderState = 1;
                             }
                             else {
@@ -404,32 +478,13 @@ namespace Uri {
                             break;
                         }
                         case 1: {
-                            if (IsCharacterInSet(c, { '0', '9' })) {
-                                decodedCharacter = (int)(c - '0');
-                                decoderState = 2;
-                            }
-                            else if (IsCharacterInSet(c, { 'A', 'F' })) {
-                                decodedCharacter = (int)(c - 'A') + 10;
-                                decoderState = 2;
-                            }
-                            else {
+                            if (!pecDecoder.NextEncodedCharacter(c)) {
                                 return false;
                             }
-                            break;
-                        }
-                        case 2: {
-                            decoderState = 0;
-                            decodedCharacter <<= 4;
-                            if (IsCharacterInSet(c, { '0', '9' })) {
-                                decodedCharacter += (int)(c - '0');
+                            if (pecDecoder.Done()) {
+                                decoderState = 0;
+                                userInfo.push_back((char)pecDecoder.GetDecodedCharacter());
                             }
-                            else if (IsCharacterInSet(c, { 'A', 'F' })) {
-                                decodedCharacter += (int)(c - 'A') + 10;
-                            }
-                            else {
-                                return false;
-                            }
-                            userInfo.push_back((char)decodedCharacter);
                             break;
                         }
                     }
@@ -443,6 +498,7 @@ namespace Uri {
             size_t decoderState = 0;
             int decodedCharacter = 0;
             host.clear();
+            DecodePercentEncodedCharacter pecDecoder;
             for (const auto c : hostPortString) {
                 switch (decoderState) {
                     case 0: { // first character
@@ -457,6 +513,7 @@ namespace Uri {
                     }
                     case 1: { // reg-name or IPv4Address
                         if (c == '%') {
+                            pecDecoder = DecodePercentEncodedCharacter();
                             decoderState = 2;
                         }
                         else if (c == ':') {
@@ -485,32 +542,14 @@ namespace Uri {
                         }
                         break;
                     }
-                    case 2: { // % ...
-                        decoderState = 3;
-                        if (IsCharacterInSet(c, { '0', '9' })) {
-                            decodedCharacter = (int)(c - '0');
-                        }
-                        else if (IsCharacterInSet(c, { 'A', 'F' })) {
-                            decodedCharacter = (int)(c - 'A') + 10;
-                        }
-                        else {
+                    case 2: {
+                        if (!pecDecoder.NextEncodedCharacter(c)) {
                             return false;
                         }
-                        break;
-                    }
-                    case 3: { // %[0-9A-F] ...
-                        decoderState = 1;
-                        decodedCharacter <<= 4;
-                        if (IsCharacterInSet(c, { '0', '9' })) {
-                            decodedCharacter += (int)(c - '0');
+                        if (pecDecoder.Done()) {
+                            decoderState = 0;
+                            host.push_back((char)pecDecoder.GetDecodedCharacter());
                         }
-                        else if (IsCharacterInSet(c, { 'A', 'F' })) {
-                            decodedCharacter += (int)(c - 'A') + 10;
-                        }
-                        else {
-                            return false;
-                        }
-                        host.push_back((char)decodedCharacter);
                         break;
                     }
                     case 4: { // IP-literal
