@@ -10,6 +10,8 @@
 #include <memory>
 #include <Uri/Uri.hpp>
 #include <inttypes.h>
+#include "IsCharacterInSet.hpp"
+#include "PercentEncodedCharacterDecoder.hpp"
 
 namespace {
     /**
@@ -71,35 +73,6 @@ namespace {
     }
 
     /**
-     *  This function determines whether or not the given character
-     *  is in the given character set.
-     *
-     *  @Param[in] c
-     *      This is the character to check.
-     *
-     *  @Param[in] characterSet
-     *      This is the set of characters that are allowed.
-     *
-     *  @return
-     *      An indication of whether or not the given character
-     *      is in the given character set is returned.
-     */
-    bool IsCharacterInSet(
-        char c,
-        std::initializer_list< char > characterSet
-        ) {
-        for (auto charInSet = characterSet.begin();
-            charInSet != characterSet.end();
-            ++charInSet) {
-            const auto first = *charInSet++;
-            const auto last = *charInSet;
-            if ((c >= first) && (c <= last))
-                return true;
-        }
-        return false;
-    }
-
-    /**
     * This function returns a strategy function that
     * may be used with the FailsMatch function to test a scheme
     * to make sure it is legalaccording to the standard.
@@ -120,108 +93,16 @@ namespace {
             else {
                 bool check;
                 if (*isFirstCharacter) {
-                    check = IsCharacterInSet(c, { 'a', 'z', 'A', 'Z' });
+                    check = Uri::IsCharacterInSet(c, { 'a', 'z', 'A', 'Z' });
                 }
                 else {
-                    check = IsCharacterInSet(c, { 'a', 'z', 'A', 'Z', '0', '9', '+', '+', '-', '-', '.', '.' });
+                    check = Uri::IsCharacterInSet(c, { 'a', 'z', 'A', 'Z', '0', '9', '+', '+', '-', '-', '.', '.' });
                 }
                 *isFirstCharacter = false;
                 return check;
             }
         };
     }
-
-    /**
-     * This class can take in a percent-encoded character,
-     * decode it and also detect if there are any problems in the encoding.
-     */
-    class DecodePercentEncodedCharacter {
-        // Methods
-    public:
-        /**
-         * This method inputs the next encoded character.
-         *
-         * @param[in] c
-         *      This is the next encoded character to give to the decoder.
-         *
-         * @return
-         *      An indication of wheter or not the encoded character
-         *      was accepted is returned.
-         */
-        bool NextEncodedCharacter(char c) {
-            switch (decoderState_) {
-            case 0: { // % ...
-                decoderState_ = 1;
-
-                if (IsCharacterInSet(c, { '0', '9' })) {
-                    decodedCharacter_ = (int)(c - '0');
-                }
-                else if (IsCharacterInSet(c, { 'A', 'F' })) {
-                    decodedCharacter_ = (int)(c - 'A') + 10;
-                }
-                else {
-                    return false;
-                }
-                break;
-            }
-            case 1: { // %[0-9A-F]
-                decoderState_ = 2;
-                decodedCharacter_ <<= 4;
-                if (IsCharacterInSet(c, { '0', '9' })) {
-                    decodedCharacter_ += (int)(c - '0');
-                }
-                else if (IsCharacterInSet(c, { 'A', 'F' })) {
-                    decodedCharacter_ += (int)(c - 'A') + 10;
-                }
-                else {
-                    return false;
-                }
-                break;
-            }
-            default:
-                break;
-            }
-            return true;
-        }
-
-        /**
-         * This method checks to see if the decoder is done
-         * and has decoded the encoded character.
-         *
-         * @return
-         *      An indication of wheter or not the decoder is done
-         *      and has decoded the encoded character is returned.
-         */
-        bool Done() const {
-            return (decoderState_ == 2);
-        }
-
-        /**
-         * This method returns the decoded character, once the
-         * decoder is done.
-         *
-         * @return
-         *      The decoded character is returned.
-         */
-        char GetDecodedCharacter() const {
-            return (char)decodedCharacter_;
-        }
-
-        // Properties
-    private:
-        /**
-         * This is the decoded character
-         */
-        int decodedCharacter_ = 0;
-
-        /**
-         * This is the current state of the decoder's state machine
-         * - 0: we haven't yet received the first hex digit.
-         * - 1: we received the first hex digit but not the second.
-         * - 2: we received both hex digits.
-         */
-        size_t decoderState_ = 0;
-    };
 
     /**
      * This method checks and decodes the given path queryOrFragment
@@ -240,16 +121,16 @@ namespace {
 
         size_t decoderState = 0;
         int decodedCharacter = 0;
-        DecodePercentEncodedCharacter pecDecoder;
+        Uri::PercentEncodedCharacterDecoder pecDecoder;
         for (const auto c : originalQueryOrFragment) {
             switch (decoderState) {
                 case 0: {
                     if (c == '%') {
-                        pecDecoder = DecodePercentEncodedCharacter();
+                        pecDecoder = Uri::PercentEncodedCharacterDecoder();
                         decoderState = 1;
                     }
                     else {
-                        if (IsCharacterInSet(c, {
+                        if (Uri::IsCharacterInSet(c, {
                             // unreserved
                             'a', 'z', 'A', 'Z', // ALPHA
                             '0', '9', // DIGIT
@@ -307,16 +188,16 @@ namespace {
 
         size_t decoderState = 0;
         int decodedCharacter = 0;
-        DecodePercentEncodedCharacter pecDecoder;
+        Uri::PercentEncodedCharacterDecoder pecDecoder;
         for (const auto c : originalSegement) {
             switch (decoderState) {
             case 0: {
                 if (c == '%') {
-                    pecDecoder = DecodePercentEncodedCharacter();
+                    pecDecoder = Uri::PercentEncodedCharacterDecoder();
                     decoderState = 1;
                 }
                 else {
-                    if (IsCharacterInSet(c, {
+                    if (Uri::IsCharacterInSet(c, {
                         // unreserved
                         'a', 'z', 'A', 'Z', // ALPHA
                         '0', '9', // DIGIT
@@ -445,12 +326,12 @@ namespace Uri {
                 const auto userInfoEncoded = authorityString.substr(0, userInfoDelimiter);
                 size_t decoderState = 0;
                 int decodedCharacter = 0;
-                DecodePercentEncodedCharacter pecDecoder;
+                PercentEncodedCharacterDecoder pecDecoder;
                 for (const auto c : userInfoEncoded) {
                     switch (decoderState) {
                         case 0: {
                             if (c == '%') {
-                                pecDecoder = DecodePercentEncodedCharacter();
+                                pecDecoder = PercentEncodedCharacterDecoder();
                                 decoderState = 1;
                             }
                             else {
@@ -498,7 +379,7 @@ namespace Uri {
             size_t decoderState = 0;
             int decodedCharacter = 0;
             host.clear();
-            DecodePercentEncodedCharacter pecDecoder;
+            PercentEncodedCharacterDecoder pecDecoder;
             for (const auto c : hostPortString) {
                 switch (decoderState) {
                     case 0: { // first character
@@ -513,7 +394,7 @@ namespace Uri {
                     }
                     case 1: { // reg-name or IPv4Address
                         if (c == '%') {
-                            pecDecoder = DecodePercentEncodedCharacter();
+                            pecDecoder = PercentEncodedCharacterDecoder();
                             decoderState = 2;
                         }
                         else if (c == ':') {

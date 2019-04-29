@@ -1,16 +1,20 @@
 # CMakeLists.txt for Uri
 #
-# © 2018 by Richard Walters
+# © 2019 by YaMing Wu
 
 cmake_minimum_required(VERSION 3.8)
 set(This Uri)
 
 set(Headers
     include/Uri/Uri.hpp
+    src/IsCharacterInSet.hpp
+    src/PercentEncodedCharacterDecoder.hpp
 )
 
 set(Sources
     src/Uri.cpp
+    src/IsCharacterInSet.cpp
+    src/PercentEncodedCharacterDecoder.cpp
 )
 
 add_library(${This} STATIC ${Sources} ${Headers})
