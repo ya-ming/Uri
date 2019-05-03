@@ -523,3 +523,29 @@ TEST(UriTests, ParseFromStringFragmentBarelyLegal) {
         ++index;
     }
 }
+
+TEST(UriTests, ParseFromPathWithPercentEncodedCharacters) {
+    struct TestVector {
+        std::string uriString;
+        std::string pathFirstSegement;
+    };
+
+    const std::vector<TestVector> testVectors{
+            { "%41", "A"},
+            { "%4A", "J"},
+            { "%4a", "J"},
+            { "%bc", "\xbc"},
+            { "%Bc", "\xbc"},
+            { "%bC", "\xbc"},
+            { "%41%42%43", "ABC"},
+            { "%41%4A%43%4b", "AJCK"},
+    };
+
+    size_t index = 0;
+    for (const auto& testVector : testVectors) {
+        Uri::Uri uri;
+        ASSERT_TRUE(uri.ParseFromString(testVector.uriString)) << index;
+        ASSERT_EQ(testVector.pathFirstSegement, uri.GetPath()[0]) << index;
+        ++index;
+    }
+}
