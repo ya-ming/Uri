@@ -10,7 +10,7 @@
 #include <memory>
 #include <Uri/Uri.hpp>
 #include <inttypes.h>
-#include "IsCharacterInSet.hpp"
+#include "CharacterSet.hpp"
 #include "NormalizeCaseInsensitiveString.hpp"
 #include "PercentEncodedCharacterDecoder.hpp"
 

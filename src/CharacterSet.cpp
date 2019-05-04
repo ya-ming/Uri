@@ -6,7 +6,7 @@
  * © 2019 by YaMing Wu
  */
 
-#include "IsCharacterInSet.hpp"
+#include "CharacterSet.hpp"
 
 #include <set>
 
