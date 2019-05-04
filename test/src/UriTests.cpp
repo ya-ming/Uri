@@ -262,6 +262,24 @@ TEST(UriTests, ParseFromStringSchemeBarelyLegal) {
     }
 }
 
+TEST(UriTests, ParseFromStringSchemeMixedCasel) {
+    const std::vector<std::string> testVectors{
+            { "http://www.example.com/"},
+            { "HTtp://www.example.com/"},
+            { "HTTP://www.example.com/"},
+            { "Http://www.example.com/"},
+            { "HttP://www.example.com/"}
+    };
+
+    size_t index = 0;
+    for (const auto& testVector : testVectors) {
+        Uri::Uri uri;
+        ASSERT_TRUE(uri.ParseFromString(testVector)) << index;
+        ASSERT_EQ("http", uri.GetScheme()) << ">>> Failed for test vector element " << index << " <<<";
+        ++index;
+    }
+}
+
 
 TEST(UriTests, ParseFromStringUserInfoIllegalCharacters) {
     const std::vector<std::string> testVectors{
@@ -325,7 +343,7 @@ TEST(UriTests, ParseFromStringHostBarelyLegal) {
     };
 
     const std::vector<TestVector> testVectors{
-            { "//%41/", "A"},
+            { "//%41/", "a"},
             { "///", ""},
             { "//!/", "!"},
             { "//'/", "'"},
@@ -333,6 +351,7 @@ TEST(UriTests, ParseFromStringHostBarelyLegal) {
             { "//;/", ";"},
             { "//1.2.3.4/", "1.2.3.4"},
             { "//[v7.:]/", "[v7.:]"},
+            { "//[v7.aB]/", "[v7.aB]"},
     };
 
     size_t index = 0;
@@ -340,6 +359,24 @@ TEST(UriTests, ParseFromStringHostBarelyLegal) {
         Uri::Uri uri;
         ASSERT_TRUE(uri.ParseFromString(testVector.uriString)) << index;
         ASSERT_EQ(testVector.host, uri.GetHost()) << index;
+        ++index;
+    }
+}
+
+TEST(UriTests, ParseFromStringHostMixedCasel) {
+    const std::vector<std::string> testVectors{
+            { "http://www.example.com/"},
+            { "http://www.EXAMPLE.com/"},
+            { "http://www.exAMple.com/"},
+            { "http://www.example.cOM/"},
+            { "http://www.example.Com/"},
+    };
+
+    size_t index = 0;
+    for (const auto& testVector : testVectors) {
+        Uri::Uri uri;
+        ASSERT_TRUE(uri.ParseFromString(testVector)) << index;
+        ASSERT_EQ("www.example.com", uri.GetHost()) << ">>> Failed for test vector element " << index << " <<<";
         ++index;
     }
 }

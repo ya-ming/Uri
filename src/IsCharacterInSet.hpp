@@ -2,9 +2,9 @@
 #define URI_IS_CHARACTER_IN_SET_HPP
 
 /**
- * @file PercentEncodedCharacterDecoder.hpp
+ * @file IsCharacterInSet.hpp
  *
- * This module declares the Uri::PercentEncodedCharacterDecoder class.
+ * This module declares the Uri::IsCharacterInSet class.
  *
  * © 2019 by YaMing Wu
  */
@@ -14,12 +14,12 @@
 
 namespace Uri {
 
-    /**
-     * This represents a set of characters which can be queried
-     * to find out if a character is in the set or not.
-     * 
-     * 
-     */
+     /**
+      * This represents a set of characters which can be queried
+      * to find out if a character is in the set or not.
+      *
+      *
+      */
     class CharacterSet {
         // Lifecycle management
     public:

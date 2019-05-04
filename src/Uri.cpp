@@ -11,7 +11,9 @@
 #include <Uri/Uri.hpp>
 #include <inttypes.h>
 #include "IsCharacterInSet.hpp"
+#include "NormalizeCaseInsensitiveString.hpp"
 #include "PercentEncodedCharacterDecoder.hpp"
+
 
 namespace {
 
@@ -455,6 +457,7 @@ namespace Uri {
             int decodedCharacter = 0;
             host.clear();
             PercentEncodedCharacterDecoder pecDecoder;
+            bool hostIsRegName = false;
             for (const auto c : hostPortString) {
                 switch (decoderState) {
                     case 0: { // first character
@@ -465,6 +468,7 @@ namespace Uri {
                         }
                         else {
                             decoderState = 1;
+                            hostIsRegName = true;
                         }
                     }
                     case 1: { // reg-name or IPv4Address
@@ -552,6 +556,10 @@ namespace Uri {
                     }
                 }
             }
+            if (hostIsRegName) {
+                host = NormalizeCaseInsensitiveString(host);
+            }
+
             if (portString.empty())
             {
                 hasPort = false;
@@ -603,6 +611,7 @@ namespace Uri {
                 return false;
             }
 
+            impl_->scheme = NormalizeCaseInsensitiveString(impl_->scheme);
             rest = uriString.substr(schemeEnd + 1);
         }
 

@@ -1,7 +1,7 @@
 /**
- * @file PercentEncodedCharacterDecoder.cpp
+ * @file IsCharacterInSet.cpp
  *
- * This module declares the Uri::PercentEncodedCharacterDecoder class.
+ * This module declares the Uri::IsCharacterInSet class.
  *
  * © 2019 by YaMing Wu
  */
