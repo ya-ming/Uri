@@ -25,7 +25,7 @@ namespace {
      * This is the character set containing just the lower case letters
      * 'a' through 'f', used in lower-case hexadecimal.
      */
-        const Uri::CharacterSet HEX_LOWER('a', 'f');
+    const Uri::CharacterSet HEX_LOWER('a', 'f');
 }
 
 namespace Uri {
@@ -42,6 +42,34 @@ namespace Uri {
          * - 2: we received both hex digits.
          */
         size_t decoderState = 0;
+
+        /**
+         * This method shifts in th egiven hex digit as part of
+         * building the decoded character.
+         *
+         * @param[in] c
+         *      This is the hex digit to shift into the decoded character.
+         *
+         * @return
+         *      An indication of whether or not the given hex digit
+         *      was valid is returned.
+         */
+        bool ShiftInHexDigit(char c) {
+            decodedCharacter <<= 4;
+            if (DIGIT.Has(c)) {
+                decodedCharacter += (int)(c - '0');
+            }
+            else if (HEX_UPPER.Has(c)) {
+                decodedCharacter += (int)(c - 'A') + 10;
+            }
+            else if (HEX_LOWER.Has(c)) {
+                decodedCharacter += (int)(c - 'a') + 10;
+            }
+            else {
+                return false;
+            }
+            return true;
+        }
     };
 
     PercentEncodedCharacterDecoder::~PercentEncodedCharacterDecoder() = default;
@@ -58,34 +86,14 @@ namespace Uri {
         switch (impl_->decoderState) {
         case 0: { // % ...
             impl_->decoderState = 1;
-
-            if (DIGIT.Has(c)) {
-                impl_->decodedCharacter = (int)(c - '0');
-            }
-            else if (HEX_UPPER.Has(c)) {
-                impl_->decodedCharacter = (int)(c - 'A') + 10;
-            }
-            else if (HEX_LOWER.Has(c)) {
-                impl_->decodedCharacter = (int)(c - 'a') + 10;
-            }
-            else {
+            if (!impl_->ShiftInHexDigit(c)) {
                 return false;
             }
             break;
         }
         case 1: { // %[0-9A-F]
             impl_->decoderState = 2;
-            impl_->decodedCharacter <<= 4;
-            if (DIGIT.Has(c)) {
-                impl_->decodedCharacter += (int)(c - '0');
-            }
-            else if (HEX_UPPER.Has(c)) {
-                impl_->decodedCharacter += (int)(c - 'A') + 10;
-            }
-            else if (HEX_LOWER.Has(c)) {
-                impl_->decodedCharacter += (int)(c - 'a') + 10;
-            }
-            else {
+            if (!impl_->ShiftInHexDigit(c)) {
                 return false;
             }
             break;

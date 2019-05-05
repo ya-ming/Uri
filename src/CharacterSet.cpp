@@ -1,7 +1,7 @@
 /**
- * @file IsCharacterInSet.cpp
+ * @file CharacterSet.cpp
  *
- * This module declares the Uri::IsCharacterInSet class.
+ * This module declares the Uri::CharacterSet class.
  *
  * © 2019 by YaMing Wu
  */
