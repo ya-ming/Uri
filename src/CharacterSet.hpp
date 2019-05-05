@@ -78,7 +78,7 @@ namespace Uri {
          *      An indication of whether or not the given character
          *      is in the character set is returned.
          */
-        bool Has(char c) const;
+        bool Contains(char c) const;
 
         // Properties
         private:

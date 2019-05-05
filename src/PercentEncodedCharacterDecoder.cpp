@@ -57,13 +57,13 @@ namespace Uri {
          */
         bool ShiftInHexDigit(char c) {
             decodedCharacter <<= 4;
-            if (DIGIT.Has(c)) {
+            if (DIGIT.Contains(c)) {
                 decodedCharacter += (int)(c - '0');
             }
-            else if (HEX_UPPER.Has(c)) {
+            else if (HEX_UPPER.Contains(c)) {
                 decodedCharacter += (int)(c - 'A') + 10;
             }
-            else if (HEX_LOWER.Has(c)) {
+            else if (HEX_LOWER.Contains(c)) {
                 decodedCharacter += (int)(c - 'a') + 10;
             }
             else {

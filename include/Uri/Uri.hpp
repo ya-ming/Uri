@@ -83,7 +83,7 @@ namespace Uri {
 
         /**
          * This method returns the "path" element of the URI
-         * as a sequence of segements
+         * as a sequence of segments
          *
          * @note
          *      If the first step of the path is an empty string

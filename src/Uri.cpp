@@ -208,10 +208,10 @@ namespace {
             else {
                 bool check;
                 if (*isFirstCharacter) {
-                    check = ALPHA.Has(c);
+                    check = ALPHA.Contains(c);
                 }
                 else {
-                    check = SCHEME_NOT_FIRST.Has(c);
+                    check = SCHEME_NOT_FIRST.Contains(c);
                 }
                 *isFirstCharacter = false;
                 return check;
@@ -220,106 +220,77 @@ namespace {
     }
 
     /**
-     * This method checks and decodes the given path queryOrFragment
+     * This method checks and decodes the given URI element
+     * What we are calling a "URI element" is any part of the URI
+     * which is a sequence of characters that:
+     * - may be percent-encoded
+     * - or a restricted set of characters
      *
-     * @param[in, out] queryOrFragment
-     *      On input, this is the queryOrFragment to check and decode.
-     *      On output, this is the decoded queryOrFragment.
+     * @param[in, out] element
+     *      On input, this is the element to check and decode.
+     *      On output, this is the decoded element.
      *
-     * @return
-     *      An indication of whether or not the given queryOrFragment
-     *      passes all the checks and was decoded successfully is returned.
-     */
-    bool DecodeQueryOrFragment(std::string& queryOrFragment) {
-        const auto originalQueryOrFragment = std::move(queryOrFragment);
-        queryOrFragment.clear();
-
-        size_t decoderState = 0;
-        int decodedCharacter = 0;
-        Uri::PercentEncodedCharacterDecoder pecDecoder;
-        for (const auto c : originalQueryOrFragment) {
-            switch (decoderState) {
-                case 0: {
-                    if (c == '%') {
-                        pecDecoder = Uri::PercentEncodedCharacterDecoder();
-                        decoderState = 1;
-                    }
-                    else {
-                        if (QUERY_OR_FRAGMENT_NOT_PCT_ENCODED.Has(c)) {
-                            queryOrFragment.push_back(c);
-                        }
-                        else {
-                            return false;
-                        }
-
-                    }
-                    break;
-                }
-                case 1: {
-                    if (!pecDecoder.NextEncodedCharacter(c)) {
-                        return false;
-                    }
-                    if (pecDecoder.Done()) {
-                        decoderState = 0;
-                        queryOrFragment.push_back((char)pecDecoder.GetDecodedCharacter());
-                    }
-                    break;
-                }
-            }
-        }
-        return true;
-    }
-
-    /**
-     * This method checks and decodes the given path segements
-     *
-     * @param[in, out] segement
-     *      On input, this is the path segment to check and decode.
-     *      On output, this is the decoded path segement.
+     * @param[in] allowedCharacters
+     *      This is the set of characters that do not need to
+     *      be percent-encoded
      *
      * @return
-     *      An indication of whether or not the given path segement
+     *      An indication of whether or not the given element
      *      passes all the checks and was decoded successfully is returned.
      */
-    bool DecodePathSegement(std::string& segement) {
-        const auto originalSegement = std::move(segement);
-        segement.clear();
+    bool DecodeElement(
+        std::string& element,
+        const Uri::CharacterSet& allowedCharacters
+        ) {
+        const auto originalSegment = std::move(element);
+        element.clear();
 
-        size_t decoderState = 0;
-        int decodedCharacter = 0;
+        bool decodingPec = false;
         Uri::PercentEncodedCharacterDecoder pecDecoder;
-        for (const auto c : originalSegement) {
-            switch (decoderState) {
-            case 0: {
-                if (c == '%') {
-                    pecDecoder = Uri::PercentEncodedCharacterDecoder();
-                    decoderState = 1;
-                }
-                else {
-                    if (PCHAR_NOT_PCT_ENCODED.Has(c)) {
-                        segement.push_back(c);
-                    }
-                    else {
-                        return false;
-                    }
-
-                }
-                break;
-            }
-            case 1: {
+        for (const auto c : originalSegment) {
+            if (decodingPec) {
                 if (!pecDecoder.NextEncodedCharacter(c)) {
                     return false;
                 }
                 if (pecDecoder.Done()) {
-                    decoderState = 0;
-                    segement.push_back((char)pecDecoder.GetDecodedCharacter());
+                    element.push_back((char)pecDecoder.GetDecodedCharacter());
+                    decodingPec = false;
                 }
-                break;
             }
+            else if (c == '%') {
+                decodingPec = true;
+                pecDecoder = Uri::PercentEncodedCharacterDecoder();
+            }
+            else {
+                if (allowedCharacters.Contains(c)) {
+                    element.push_back(c);
+                }
+                else {
+                    return false;
+                }
+
             }
         }
         return true;
     }
+}
+
+/**
+ * This method checks and decodes the given path queryOrFragment
+ *
+ * @param[in, out] queryOrFragment
+ *      On input, this is the queryOrFragment to check and decode.
+ *      On output, this is the decoded queryOrFragment.
+ *
+ * @return
+ *      An indication of whether or not the given queryOrFragment
+ *      passes all the checks and was decoded successfully is returned.
+ */
+bool DecodeQueryOrFragment(std::string& queryOrFragment) {
+    return DecodeElement(
+        queryOrFragment,
+        QUERY_OR_FRAGMENT_NOT_PCT_ENCODED
+    );
 }
 
 namespace Uri {
@@ -381,8 +352,8 @@ namespace Uri {
                     }
                 }
             }
-            for (auto& segement : path) {
-                if (!DecodePathSegement(segement)) {
+            for (auto& segment : path) {
+                if (!DecodeElement(segment, PCHAR_NOT_PCT_ENCODED)) {
                     return false;
                 }
             }
@@ -409,39 +380,10 @@ namespace Uri {
                 hostPortString = authorityString;
             }
             else {
-                const auto userInfoEncoded = authorityString.substr(0, userInfoDelimiter);
-                size_t decoderState = 0;
-                int decodedCharacter = 0;
-                PercentEncodedCharacterDecoder pecDecoder;
-                for (const auto c : userInfoEncoded) {
-                    switch (decoderState) {
-                        case 0: {
-                            if (c == '%') {
-                                pecDecoder = PercentEncodedCharacterDecoder();
-                                decoderState = 1;
-                            }
-                            else {
-                                if (USER_INFO_NOT_PCT_ENCODED.Has(c)) {
-                                    userInfo.push_back(c);
-                                }
-                                else {
-                                    return false;
-                                }
-                                    
-                            }
-                            break;
-                        }
-                        case 1: {
-                            if (!pecDecoder.NextEncodedCharacter(c)) {
-                                return false;
-                            }
-                            if (pecDecoder.Done()) {
-                                decoderState = 0;
-                                userInfo.push_back((char)pecDecoder.GetDecodedCharacter());
-                            }
-                            break;
-                        }
-                    }
+                userInfo = authorityString.substr(0, userInfoDelimiter);
+
+                if (!DecodeElement(userInfo, USER_INFO_NOT_PCT_ENCODED)) {
+                    return false;
                 }
                 hostPortString = authorityString.substr(userInfoDelimiter + 1);
             }
@@ -476,7 +418,7 @@ namespace Uri {
                             decoderState = 8;
                         }
                         else {
-                            if (REG_NAME_NOT_PCT_ENCODED.Has(c)) {
+                            if (REG_NAME_NOT_PCT_ENCODED.Contains(c)) {
                                 host.push_back(c);
                             }
                             else {
@@ -518,7 +460,7 @@ namespace Uri {
                         if (c == '.') {
                             decoderState = 6;
                         }
-                        else if (!HEXDIG.Has(c)) {
+                        else if (!HEXDIG.Contains(c)) {
                             return false;
                         }
                         host.push_back(c);
@@ -530,7 +472,7 @@ namespace Uri {
                         if (c == ']') {
                             decoderState = 7;
                         }
-                        else if (!IPV_FUTURE_LAST_PART.Has(c)) {
+                        else if (!IPV_FUTURE_LAST_PART.Contains(c)) {
                             return false;
                         }
                         break;

@@ -68,7 +68,7 @@ namespace Uri {
         }
     }
 
-    bool CharacterSet::Has(char c) const {
+    bool CharacterSet::Contains(char c) const {
         return impl_->charactersInSet.find(c) != impl_->charactersInSet.end();
     }
 }
