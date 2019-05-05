@@ -509,6 +509,65 @@ namespace Uri {
             }
             return true;
         }
+
+        /**
+         * This method takes the part of a URI string that has just
+         * the query and/or fragment elements, and breaks off
+         * and decodes the fragment part, returning the rest,
+         * which will be either empty or have the query with the
+         * query delimiter still attached.
+         *
+         * @param[in] queryAndOrFragment
+         *      This is the part of a URI string that has just
+         *      the query and/or fragment elements.
+         *
+         * @param[in] rest
+         *      This is where to store the rest of the input string
+         *      after removing any fragment and fragment delimiter.
+         *
+         * @return
+         *      An indication of whether or not the method succeeded
+         *      is returned.
+         */
+        bool ParseFragment(
+            const std::string& queryAndOrFragment,
+            std::string& rest
+        ) {
+            const auto fragmentDelimiter = queryAndOrFragment.find('#');
+            if (fragmentDelimiter == std::string::npos) {
+                fragment.clear();
+                rest = queryAndOrFragment;
+            }
+            else {
+                fragment = queryAndOrFragment.substr(fragmentDelimiter + 1);
+                rest = queryAndOrFragment.substr(0, fragmentDelimiter);
+            }
+            return DecodeQueryOrFragment(fragment);
+        }
+
+        /**
+         * This method takes the part of a URI string that has just
+         * the query element with its delimiter, and breaks off
+         * and decodes the query.
+         *
+         * @param[in] queryWithDelimiter
+         *      This is the part of a URI string that has just
+         *      the query and its delimiter.
+         *
+         * @return
+         *      An indication of whether or not the method succeeded
+         *      is returned.
+         */
+        bool ParseQuery(const std::string& queryWithDelimiter) {
+            if (!queryWithDelimiter.empty()) {
+                query = queryWithDelimiter.substr(1);
+            }
+            else {
+                query.clear();
+            }
+
+            return DecodeQueryOrFragment(query);
+        }
     };
 
     Uri::~Uri() = default;
@@ -590,31 +649,12 @@ namespace Uri {
         }
 
         // parse the fragment if there is one
-        const auto fragmentDelimiter = queryAndOrFragment.find('#');
-        if (fragmentDelimiter == std::string::npos) {
-            impl_->fragment.clear();
-            rest = queryAndOrFragment;
-        }
-        else {
-            impl_->fragment = queryAndOrFragment.substr(fragmentDelimiter + 1);
-            rest = queryAndOrFragment.substr(0, fragmentDelimiter);
-        }
-        if (!DecodeQueryOrFragment(impl_->fragment)) {
+        if (!impl_->ParseFragment(queryAndOrFragment, rest)) {
             return false;
         }
 
-
-        // parse the query if there is one
-        if (!rest.empty()) {
-            impl_->query = rest.substr(1);
-        }
-        else {
-            impl_->query.clear();
-        }
-
-        if (!DecodeQueryOrFragment(impl_->query)) {
-            return false;
-        }
+        // Finally, if anyting is letf, it's the query
+        return impl_->ParseQuery(rest);
 
         return true;
     }
