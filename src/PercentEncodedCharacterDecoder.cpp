@@ -59,13 +59,13 @@ namespace Uri {
         case 0: { // % ...
             impl_->decoderState = 1;
 
-            if (IsCharacterInSet(c, DIGIT)) {
+            if (DIGIT.Has(c)) {
                 impl_->decodedCharacter = (int)(c - '0');
             }
-            else if (IsCharacterInSet(c, HEX_UPPER)) {
+            else if (HEX_UPPER.Has(c)) {
                 impl_->decodedCharacter = (int)(c - 'A') + 10;
             }
-            else if (IsCharacterInSet(c, HEX_LOWER)) {
+            else if (HEX_LOWER.Has(c)) {
                 impl_->decodedCharacter = (int)(c - 'a') + 10;
             }
             else {
@@ -76,13 +76,13 @@ namespace Uri {
         case 1: { // %[0-9A-F]
             impl_->decoderState = 2;
             impl_->decodedCharacter <<= 4;
-            if (IsCharacterInSet(c, DIGIT)) {
+            if (DIGIT.Has(c)) {
                 impl_->decodedCharacter += (int)(c - '0');
             }
-            else if (IsCharacterInSet(c, HEX_UPPER)) {
+            else if (HEX_UPPER.Has(c)) {
                 impl_->decodedCharacter += (int)(c - 'A') + 10;
             }
-            else if (IsCharacterInSet(c, HEX_LOWER)) {
+            else if (HEX_LOWER.Has(c)) {
                 impl_->decodedCharacter += (int)(c - 'a') + 10;
             }
             else {

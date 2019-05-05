@@ -78,7 +78,7 @@ namespace Uri {
          *      An indication of whether or not the given character
          *      is in the character set is returned.
          */
-        bool Contains(char c) const;
+        bool Has(char c) const;
 
         // Properties
         private:
@@ -94,25 +94,6 @@ namespace Uri {
          */
         std::unique_ptr< struct Impl > impl_;
     };
-
-    /**
-     *  This function determines whether or not the given character
-     *  is in the given character set.
-     *
-     *  @Param[in] c
-     *      This is the character to check.
-     *
-     *  @Param[in] characterSet
-     *      This is the set of characters that are allowed.
-     *
-     *  @return
-     *      An indication of whether or not the given character
-     *      is in the given character set is returned.
-     */
-    bool IsCharacterInSet(
-        char c,
-        const CharacterSet& characterSet
-    );
 }
 
 #endif /* URI_CHARACTER_SET_HPP */
