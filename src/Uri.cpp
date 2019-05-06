@@ -398,99 +398,99 @@ namespace Uri {
             bool hostIsRegName = false;
             for (const auto c : hostPortString) {
                 switch (decoderState) {
-                    case 0: { // first character
-                        if (c == '[') {
+                case 0: { // first character
+                    if (c == '[') {
+                        host.push_back(c);
+                        decoderState = 3;
+                        break;
+                    }
+                    else {
+                        decoderState = 1;
+                        hostIsRegName = true;
+                    }
+                }
+                case 1: { // reg-name or IPv4Address
+                    if (c == '%') {
+                        pecDecoder = PercentEncodedCharacterDecoder();
+                        decoderState = 2;
+                    }
+                    else if (c == ':') {
+                        decoderState = 8;
+                    }
+                    else {
+                        if (REG_NAME_NOT_PCT_ENCODED.Contains(c)) {
                             host.push_back(c);
-                            decoderState = 3;
-                            break;
                         }
                         else {
-                            decoderState = 1;
-                            hostIsRegName = true;
-                        }
-                    }
-                    case 1: { // reg-name or IPv4Address
-                        if (c == '%') {
-                            pecDecoder = PercentEncodedCharacterDecoder();
-                            decoderState = 2;
-                        }
-                        else if (c == ':') {
-                            decoderState = 8;
-                        }
-                        else {
-                            if (REG_NAME_NOT_PCT_ENCODED.Contains(c)) {
-                                host.push_back(c);
-                            }
-                            else {
-                                return false;
-                            }
-                        }
-                        break;
-                    }
-                    case 2: {
-                        if (!pecDecoder.NextEncodedCharacter(c)) {
                             return false;
                         }
-                        if (pecDecoder.Done()) {
-                            decoderState = 0;
-                            host.push_back((char)pecDecoder.GetDecodedCharacter());
-                        }
+                    }
+                    break;
+                }
+                case 2: {
+                    if (!pecDecoder.NextEncodedCharacter(c)) {
+                        return false;
+                    }
+                    if (pecDecoder.Done()) {
+                        decoderState = 0;
+                        host.push_back((char)pecDecoder.GetDecodedCharacter());
+                    }
+                    break;
+                }
+                case 3: { // IP-literal
+                    if (c == 'v') {
+                        host.push_back(c);
+                        decoderState = 5;
                         break;
                     }
-                    case 3: { // IP-literal
-                        if (c == 'v') {
-                            host.push_back(c);
-                            decoderState = 5;
-                            break;
-                        }
-                        else {
-                            decoderState = 4;
-                        }
+                    else {
+                        decoderState = 4;
                     }
-                    case 4: { // IPv6address
-                        // TODO
+                }
+                case 4: { // IPv6address
+                    // TODO
 
-                        host.push_back(c);
-                        if (c == ']') {
-                            decoderState = 7;
-                        }
-                        break;
+                    host.push_back(c);
+                    if (c == ']') {
+                        decoderState = 7;
                     }
-                    case 5: { // IPvFuture: v ...
-                        if (c == '.') {
-                            decoderState = 6;
-                        }
-                        else if (!HEXDIG.Contains(c)) {
-                            return false;
-                        }
-                        host.push_back(c);
-                        break;
+                    break;
+                }
+                case 5: { // IPvFuture: v ...
+                    if (c == '.') {
+                        decoderState = 6;
                     }
-                    case 6: { // IPvFuture
-                        host.push_back(c);
+                    else if (!HEXDIG.Contains(c)) {
+                        return false;
+                    }
+                    host.push_back(c);
+                    break;
+                }
+                case 6: { // IPvFuture
+                    host.push_back(c);
 
-                        if (c == ']') {
-                            decoderState = 7;
-                        }
-                        else if (!IPV_FUTURE_LAST_PART.Contains(c)) {
-                            return false;
-                        }
-                        break;
+                    if (c == ']') {
+                        decoderState = 7;
                     }
-                    case 7: { // illegal to have anything else, unless it's a colon,
-                              // in which case it's a port delimiter
-                        if (c == ':') {
-                            decoderState = 8;
-                        }
-                        else {
-                            return false;
-                        }
-                        break;
+                    else if (!IPV_FUTURE_LAST_PART.Contains(c)) {
+                        return false;
                     }
-                    case 8: { // port
-                        portString.push_back(c);
-                        break;
+                    break;
+                }
+                case 7: { // illegal to have anything else, unless it's a colon,
+                          // in which case it's a port delimiter
+                    if (c == ':') {
+                        decoderState = 8;
                     }
+                    else {
+                        return false;
+                    }
+                    break;
+                }
+                case 8: { // port
+                    portString.push_back(c);
+                    break;
+                }
                 }
             }
             if (hostIsRegName) {
@@ -603,7 +603,7 @@ namespace Uri {
                     impl_->scheme,
                     LegalSchemeCheckStrategy()
                 )
-            ) {
+                ) {
                 return false;
             }
 
