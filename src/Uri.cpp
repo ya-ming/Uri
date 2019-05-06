@@ -738,42 +738,12 @@ namespace Uri {
         return impl_->query;
     }
 
-    // My implementation
-    /*    void Uri::NormalizePath() {
-            auto oldPath = std::move(impl_->path);
-            bool firstSegment = true;
-
-            while (!oldPath.empty()) {
-                if (firstSegment && ((oldPath[0] == ".") || (oldPath[0] == ".."))) {
-                    oldPath.erase(oldPath.begin());
-                }
-                else if (
-                    (oldPath[0] == ".")
-                    ){
-                    oldPath.erase(oldPath.begin());
-                }
-                else if (
-                    (oldPath[0] == "..")
-                    ) {
-                    oldPath.erase(oldPath.begin());
-                    impl_->path.pop_back();
-                }
-                else {
-                    firstSegment = false;
-                    impl_->path.push_back(oldPath[0]);
-                    oldPath.erase(oldPath.begin());
-                }
-            }
-        }
-    */
-
-    // The implementation follows Richard
+    /*
+     * This is a straight-up implementation of the
+     * algorithm from section 5.2.4 of
+     * RFC 3986 (https://tools.ietf.org/html/rfc3986).
+     */
     void Uri::NormalizePath() {
-        /*
-         * This is a straight-up implementation of the
-         * algorithm from section 5.2.4 of
-         * RFC 3986 (https://tools.ietf.org/html/rfc3986).
-         */
          // Step 1
         auto oldPath = std::move(impl_->path);
         impl_->path.clear();
@@ -805,7 +775,9 @@ namespace Uri {
                 && (oldPath[1] == "..")
                 ) {
                 oldPath.erase(oldPath.begin() + 1);
-                impl_->path.pop_back();
+                if (!impl_->path.empty()) {
+                    impl_->path.pop_back();
+                }
             }
             else
 
