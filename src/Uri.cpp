@@ -6,6 +6,7 @@
  * © 2019 by YaMing Wu
  */
 
+#include <algorithm>
 #include <functional>
 #include <memory>
 #include <Uri/Uri.hpp>
@@ -571,6 +572,8 @@ namespace Uri {
     };
 
     Uri::~Uri() = default;
+    Uri::Uri(Uri&&) = default;
+    Uri& Uri::operator=(Uri&&) = default;
 
     Uri::Uri()
         : impl_(new Impl)
@@ -812,5 +815,75 @@ namespace Uri {
                 }
             }
         }
+    }
+
+
+    /*
+     * Resolve the reference by following the
+     * algorithm from section 5.2.2 of
+     * RFC 3986 (https://tools.ietf.org/html/rfc3986).
+     */
+    Uri Uri::Resolve(const Uri& relativereference) const {
+        Uri target;
+        if (!relativereference.impl_->scheme.empty()) {
+            target.impl_->scheme = relativereference.impl_->scheme;
+            target.impl_->host = relativereference.impl_->host;
+            target.impl_->userInfo = relativereference.impl_->userInfo;
+            target.impl_->hasPort = relativereference.impl_->hasPort;
+            target.impl_->port = relativereference.impl_->port;
+            target.impl_->path = relativereference.impl_->path;
+            target.NormalizePath();
+            target.impl_->query = relativereference.impl_->query;
+        }
+        else
+        {
+            if (!relativereference.impl_->host.empty()) {
+                target.impl_->host = relativereference.impl_->host;
+                target.impl_->userInfo = relativereference.impl_->userInfo;
+                target.impl_->hasPort = relativereference.impl_->hasPort;
+                target.impl_->port = relativereference.impl_->port;
+                target.impl_->path = relativereference.impl_->path;
+                target.NormalizePath();
+                target.impl_->query = relativereference.impl_->query;
+            }
+            else {
+                if (relativereference.impl_->path.empty()) {
+                    target.impl_->path = impl_->path;
+                    if (!relativereference.impl_->query.empty()) {
+                        target.impl_->query = relativereference.impl_->query;
+                    }
+                    else {
+                        target.impl_->query = impl_->query;
+                    }
+                }
+                else {
+                    if (!relativereference.impl_->path.empty() && relativereference.impl_->path[0] == "") {
+                        target.impl_->path = relativereference.impl_->path;
+                        target.NormalizePath();
+                    }
+                    else {
+                        target.impl_->path = impl_->path;
+                        if (!target.impl_->path.empty()) {
+                            target.impl_->path.pop_back();
+                        }
+                        std::copy(
+                            relativereference.impl_->path.begin(),
+                            relativereference.impl_->path.end(),
+                            std::back_inserter(target.impl_->path)
+                        );
+                        target.NormalizePath();
+                    }
+                    target.impl_->query = relativereference.impl_->query;
+                }
+                target.impl_->host = impl_->host;
+                target.impl_->userInfo = impl_->userInfo;
+                target.impl_->hasPort = impl_->hasPort;
+                target.impl_->port = impl_->port;
+            }
+            target.impl_->scheme = impl_->scheme;
+        }
+
+        target.impl_->fragment = relativereference.impl_->fragment;
+        return target;
     }
 }

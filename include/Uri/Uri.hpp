@@ -24,9 +24,9 @@ namespace Uri {
     public:
         ~Uri();
         Uri(const Uri&) = delete;
-        Uri(Uri&&) = delete;
+        Uri(Uri&&);
         Uri& operator=(const Uri&) = delete;
-        Uri& operator=(Uri&&) = delete;
+        Uri& operator=(Uri&&);
 
         // Public methods
     public:
@@ -179,6 +179,18 @@ namespace Uri {
          * (apply and remove "." and ".." segments).
          */
         void NormalizePath();
+
+        /**
+         * This method resolves the given relative reference, based on the given
+         * base URI, returning the resolved target URI.
+         *
+         * @param[in] relativeReference
+         *      this describes how to get to the target starting at the base.
+         *
+         * @return
+         *      The resolved target URI is returned.
+         */
+        Uri Resolve(const Uri& relativeReference) const;
 
         // Private properties
     private:
