@@ -604,6 +604,24 @@ namespace Uri {
             
     }
 
+    std::ostream& operator<<(std::ostream &strm, const Uri &uri) {
+
+        std::string pathString = "";
+        for (auto p : uri.GetPath()) {
+            pathString = pathString + "\"" + p + "\",";
+        }
+
+        return strm << "Uri(\n" << 
+            "\n\t  Scheme:" << uri.GetScheme() <<
+            "\n\t    Host:" << uri.GetHost() <<
+            "\n\t    Port:" << uri.GetPort() <<
+            "\n\tUserInfo:" << uri.GetUserInfo() <<
+            "\n\t    Path:" << pathString <<
+            "\n\t   Query:" << uri.GetQuery() <<
+            "\n\tFragment:" << uri.GetFragment() << 
+            "\n)";
+    }
+
     bool Uri::ParseFromString(const std::string & uriString)
     {
         // First parse the scheme
@@ -678,6 +696,15 @@ namespace Uri {
         // parse the fragment if there is one
         if (!impl_->ParseFragment(queryAndOrFragment, rest)) {
             return false;
+        }
+
+        // Handle special case of absolute URI with empty
+        // path -- treat the same as "/" path.
+        if (
+            !impl_->scheme.empty()
+            && impl_->path.empty()
+            ) {
+            impl_->path.push_back("");
         }
 
         // Finally, if anyting is letf, it's the query

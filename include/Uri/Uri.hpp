@@ -70,6 +70,9 @@ namespace Uri {
          */
         bool ParseFromString(const std::string& uriString);
 
+        // Overwrite the << operator to print out the detail of the Uri class
+        friend std::ostream& operator<<(std::ostream &strm, const Uri &uri);
+
 
         /**
          * This method returns the "scheme" element of the URI
