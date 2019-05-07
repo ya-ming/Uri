@@ -698,10 +698,10 @@ namespace Uri {
             return false;
         }
 
-        // Handle special case of absolute URI with empty
+        // Handle special case of absolute URI with  authority empty
         // path -- treat the same as "/" path.
         if (
-            !impl_->scheme.empty()
+            !impl_->host.empty()
             && impl_->path.empty()
             ) {
             impl_->path.push_back("");
@@ -774,73 +774,46 @@ namespace Uri {
      * RFC 3986 (https://tools.ietf.org/html/rfc3986).
      */
     void Uri::NormalizePath() {
-         // Step 1
         auto oldPath = std::move(impl_->path);
         impl_->path.clear();
-        // Step 2
-        while (!oldPath.empty()) {
-            // Step 2A
-            if (
-                (oldPath[0] == ".")
-                || (oldPath[0] == "..")
-                ) {
-                oldPath.erase(oldPath.begin());
-            }
-            else
 
-            // Step 2B
-            if (
-                (oldPath.size() >= 2)
-                && (oldPath[0] == "")
-                && (oldPath[1] == ".")
-                ) {
-                oldPath.erase(oldPath.begin() + 1);
-            }
-            else
+        bool isAbsolute = (
+            !oldPath.empty()
+            && oldPath[0].empty()
+            );
 
-            // Step 2C
-            if (
-                (oldPath.size() >= 2)
-                && (oldPath[0] == "")
-                && (oldPath[1] == "..")
-                ) {
-                oldPath.erase(oldPath.begin() + 1);
+        bool atDirectoryLevel = false;
+        for (const auto segment : oldPath) {
+            if (segment == ".") {
+                atDirectoryLevel = true;
+            }
+            else if (segment == "..") {
                 if (!impl_->path.empty()) {
-                    impl_->path.pop_back();
+                    if (
+                        !isAbsolute
+                        || (impl_->path.size() > 1)
+                        ) {
+                        impl_->path.pop_back();
+                    }
                 }
+                atDirectoryLevel = true;
             }
-            else
+            else {
+                if (
+                    !atDirectoryLevel
+                    || !segment.empty()
+                    ) {
+                    impl_->path.push_back(segment);
+                }
+                atDirectoryLevel = segment.empty();
+            }
 
-            // Step 2D
-            if (
-                (oldPath.size() == 1)
-                && (
-                (oldPath[0] == ".")
-                    || (oldPath[0] == "..")
-                    )
-                ) {
-                oldPath.erase(oldPath.begin());
-            }
-            else
-
-             // Step 2E
-            {
-                if (oldPath[0] == "") {
-                    if (impl_->path.empty()) {
-                        impl_->path.push_back("");
-                    }
-                    oldPath.erase(oldPath.begin());
-                }
-                if (!oldPath.empty()) {
-                    impl_->path.push_back(oldPath[0]);
-                    if (oldPath.size() > 1) {
-                        oldPath[0] = "";
-                    }
-                    else {
-                        oldPath.erase(oldPath.begin());
-                    }
-                }
-            }
+        }
+        if (atDirectoryLevel && (
+            !impl_->path.empty()
+            && !impl_->path.back().empty()
+            )) {
+            impl_->path.push_back("");
         }
     }
 
@@ -890,7 +863,7 @@ namespace Uri {
                     }
                     else {
                         target.impl_->path = impl_->path;
-                        if (!target.impl_->path.empty()) {
+                        if (target.impl_->path.size() > 1) {
                             target.impl_->path.pop_back();
                         }
                         std::copy(
