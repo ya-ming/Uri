@@ -372,6 +372,23 @@ namespace Uri {
          *      An indication if the authority was parsed correctly or not is returned.
          */
         bool ParseAuthority(const std::string& authorityString) {
+            /**
+             * These are the various states for the state machine implemented
+             * below to correctly split up and validate the URI substring
+             * containing the host and potentially a port number as well.
+             */
+            enum class HostParsingState {
+                FIRST_CHARACTER,
+                NOT_IP_LITERAL,
+                PERCENT_ENCODED_CHARACTER,
+                IP_LITERAL,
+                IPV6_ADDRESS,
+                IPV_FUTURE_NUMBER,
+                IPV_FUTURE_BODY,
+                GARBAGE_CHECK,
+                PORT,
+            };
+
             // Next, check if there is a UserInfo, and if so, extract it
             const auto userInfoDelimiter = authorityString.find('@');
             std::string hostPortString;
@@ -392,31 +409,31 @@ namespace Uri {
             // paring host and port from authority
             std::string portString;
 
-            size_t decoderState = 0;
+            HostParsingState hostParsingState = HostParsingState::FIRST_CHARACTER;
             int decodedCharacter = 0;
             host.clear();
             PercentEncodedCharacterDecoder pecDecoder;
             bool hostIsRegName = false;
             for (const auto c : hostPortString) {
-                switch (decoderState) {
-                case 0: { // first character
+                switch (hostParsingState) {
+                case HostParsingState::FIRST_CHARACTER: { // first character
                     if (c == '[') {
                         host.push_back(c);
-                        decoderState = 3;
+                        hostParsingState = HostParsingState::IP_LITERAL;
                         break;
                     }
                     else {
-                        decoderState = 1;
+                        hostParsingState = HostParsingState::NOT_IP_LITERAL;
                         hostIsRegName = true;
                     }
                 }
-                case 1: { // reg-name or IPv4Address
+                case HostParsingState::NOT_IP_LITERAL: { // reg-name or IPv4Address
                     if (c == '%') {
                         pecDecoder = PercentEncodedCharacterDecoder();
-                        decoderState = 2;
+                        hostParsingState = HostParsingState::PERCENT_ENCODED_CHARACTER;
                     }
                     else if (c == ':') {
-                        decoderState = 8;
+                        hostParsingState = HostParsingState::PORT;
                     }
                     else {
                         if (REG_NAME_NOT_PCT_ENCODED.Contains(c)) {
@@ -428,38 +445,38 @@ namespace Uri {
                     }
                     break;
                 }
-                case 2: {
+                case HostParsingState::PERCENT_ENCODED_CHARACTER: {
                     if (!pecDecoder.NextEncodedCharacter(c)) {
                         return false;
                     }
                     if (pecDecoder.Done()) {
-                        decoderState = 0;
+                        hostParsingState = HostParsingState::FIRST_CHARACTER;
                         host.push_back((char)pecDecoder.GetDecodedCharacter());
                     }
                     break;
                 }
-                case 3: { // IP-literal
+                case HostParsingState::IP_LITERAL: { // IP-literal
                     if (c == 'v') {
                         host.push_back(c);
-                        decoderState = 5;
+                        hostParsingState = HostParsingState::IPV_FUTURE_NUMBER;
                         break;
                     }
                     else {
-                        decoderState = 4;
+                        hostParsingState = HostParsingState::IPV6_ADDRESS;
                     }
                 }
-                case 4: { // IPv6address
+                case HostParsingState::IPV6_ADDRESS: { // IPv6address
                     // TODO
 
                     host.push_back(c);
                     if (c == ']') {
-                        decoderState = 7;
+                        hostParsingState = HostParsingState::GARBAGE_CHECK;
                     }
                     break;
                 }
-                case 5: { // IPvFuture: v ...
+                case HostParsingState::IPV_FUTURE_NUMBER: { // IPvFuture: v ...
                     if (c == '.') {
-                        decoderState = 6;
+                        hostParsingState = HostParsingState::IPV_FUTURE_BODY;
                     }
                     else if (!HEXDIG.Contains(c)) {
                         return false;
@@ -467,28 +484,28 @@ namespace Uri {
                     host.push_back(c);
                     break;
                 }
-                case 6: { // IPvFuture
+                case HostParsingState::IPV_FUTURE_BODY: { // IPvFuture
                     host.push_back(c);
 
                     if (c == ']') {
-                        decoderState = 7;
+                        hostParsingState = HostParsingState::GARBAGE_CHECK;
                     }
                     else if (!IPV_FUTURE_LAST_PART.Contains(c)) {
                         return false;
                     }
                     break;
                 }
-                case 7: { // illegal to have anything else, unless it's a colon,
+                case HostParsingState::GARBAGE_CHECK: { // illegal to have anything else, unless it's a colon,
                           // in which case it's a port delimiter
                     if (c == ':') {
-                        decoderState = 8;
+                        hostParsingState = HostParsingState::PORT;
                     }
                     else {
                         return false;
                     }
                     break;
                 }
-                case 8: { // port
+                case HostParsingState::PORT: { // port
                     portString.push_back(c);
                     break;
                 }
