@@ -748,6 +748,7 @@ TEST(UriTests, IPv6Address) {
         {"http://::ffff:1.2.3.4]/", "", false},
         {"http://::ffff:a.2.3.4]/", "", false},
         {"http://::ffff:1.a.3.4]/", "", false},
+        {"http://[fFfF:1:2:3:4:5:6:a]", "fFfF:1:2:3:4:5:6:a", true},
     };
     size_t index = 0;
     for (const auto& testVector : testVectors) {
