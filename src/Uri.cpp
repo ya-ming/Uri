@@ -511,6 +511,17 @@ namespace Uri {
                 }
                 }
             }
+
+            if (
+                (hostParsingState != HostParsingState::FIRST_CHARACTER)
+                && (hostParsingState != HostParsingState::NOT_IP_LITERAL)
+                && (hostParsingState != HostParsingState::GARBAGE_CHECK)
+                && (hostParsingState != HostParsingState::PORT)
+                ) {
+                // truncated or ended early
+                return false;
+            }
+
             if (hostIsRegName) {
                 host = NormalizeCaseInsensitiveString(host);
             }
