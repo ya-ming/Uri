@@ -418,7 +418,6 @@ namespace Uri {
                 switch (hostParsingState) {
                 case HostParsingState::FIRST_CHARACTER: { // first character
                     if (c == '[') {
-                        host.push_back(c);
                         hostParsingState = HostParsingState::IP_LITERAL;
                         break;
                     }
@@ -485,13 +484,14 @@ namespace Uri {
                     break;
                 }
                 case HostParsingState::IPV_FUTURE_BODY: { // IPvFuture
-                    host.push_back(c);
-
                     if (c == ']') {
                         hostParsingState = HostParsingState::GARBAGE_CHECK;
                     }
                     else if (!IPV_FUTURE_LAST_PART.Contains(c)) {
                         return false;
+                    }
+                    else {
+                        host.push_back(c);
                     }
                     break;
                 }
