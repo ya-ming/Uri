@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <functional>
 #include <memory>
+#include <sstream>
 #include <Uri/Uri.hpp>
 #include <inttypes.h>
 #include "CharacterSet.hpp"
@@ -579,13 +580,31 @@ namespace Uri {
         std::string scheme;
         std::string userInfo;
         std::string host;
-        std::vector<std::string> path;
         bool hasPort = false;
         uint16_t port = 0;
+        std::vector<std::string> path;
+        bool hasQuery = false;
         std::string query;
+        bool hasFragment = false;
         std::string fragment;
 
         // Methods
+
+        /**
+         * This method returns an indication of whether or not
+         * the URI includes any element that is part of the authority of the URI.
+         *
+         * return
+         *      An indication of whether or not the URI includes
+         *      any element that is part of the authority of the URI is returned.
+         */
+        bool HasAuthority() const {
+            return (
+                !host.empty()
+                || !userInfo.empty()
+                || hasPort
+                );
+        }
 
         /**
          * This method builds the internal path element sequence
@@ -958,10 +977,12 @@ namespace Uri {
         ) {
             const auto fragmentDelimiter = queryAndOrFragment.find('#');
             if (fragmentDelimiter == std::string::npos) {
+                hasFragment = false;
                 fragment.clear();
                 rest = queryAndOrFragment;
             }
             else {
+                hasFragment = true;
                 fragment = queryAndOrFragment.substr(fragmentDelimiter + 1);
                 rest = queryAndOrFragment.substr(0, fragmentDelimiter);
             }
@@ -982,7 +1003,8 @@ namespace Uri {
          *      is returned.
          */
         bool ParseQuery(const std::string& queryWithDelimiter) {
-            if (!queryWithDelimiter.empty()) {
+            hasQuery = !queryWithDelimiter.empty();
+            if (hasQuery) {
                 query = queryWithDelimiter.substr(1);
             }
             else {
@@ -1282,9 +1304,17 @@ namespace Uri {
         return !impl_->IsPathAbsolute();
     }
 
+    bool Uri::HasFragment() const {
+        return impl_->hasFragment;
+    }
+
     std::string Uri::GetFragment() const
     {
         return impl_->fragment;
+    }
+
+    bool Uri::HasQuery() const {
+        return impl_->hasQuery;
     }
 
     std::string Uri::GetQuery() const
@@ -1363,4 +1393,104 @@ namespace Uri {
         target.impl_->CopyFragment(relativeReference);
         return target;
     }
+
+    void Uri::SetScheme(const std::string& scheme) {
+        impl_->scheme = scheme;
+    }
+
+    void Uri::SetUserInfo(const std::string& userInfo) {
+        impl_->userInfo = userInfo;
+    }
+
+    void Uri::SetHost(const std::string& host) {
+        impl_->host = host;
+    }
+
+    void Uri::SetPort(uint16_t port) {
+        impl_->port = port;
+        impl_->hasPort = true;
+    }
+
+    void Uri::ClearPort() {
+        impl_->hasPort = false;
+    }
+
+    void Uri::SetPath(const std::vector<std::string>& path) {
+        impl_->path = path;
+    }
+
+    void Uri::SetQuery(const std::string& query) {
+        impl_->query = query;
+        impl_->hasQuery = true;
+    }
+
+    void Uri::ClearQuery() {
+        impl_->hasQuery = false;
+    }
+
+    void Uri::SetFragment(const std::string& fragment) {
+        impl_->fragment = fragment;
+        impl_->hasFragment = true;
+    }
+
+    void Uri::ClearFragment() {
+        impl_->hasFragment = false;
+    }
+
+    std::string Uri::GenerateString() const {
+        std::ostringstream buffer;
+
+        if (!impl_->scheme.empty()) {
+            buffer << impl_->scheme << ':';
+        }
+
+        if (impl_->HasAuthority()) {
+            buffer << "//";
+
+            if (!impl_->userInfo.empty()) {
+                buffer << impl_->userInfo << '@';
+            }
+
+            if (!impl_->host.empty()) {
+                if (ValidateIpv6Address(impl_->host)) {
+                    buffer << '[' << impl_->host << ']';
+                }
+                else {
+                    buffer << impl_->host;
+                }
+            }
+
+            if (impl_->hasPort) {
+                buffer << ':' << impl_->port;
+            }
+        }
+
+        // Special case: absolute but otherwise empty path.
+        if (
+            impl_->IsPathAbsolute()
+            && (impl_->path.size() == 1)
+            ) {
+            buffer << '/';
+        }
+
+        size_t i = 0;
+        for (const auto& segment : impl_->path) {
+            buffer << segment;
+            if (i + 1 < impl_->path.size()) {
+                buffer << '/';
+            }
+            ++i;
+        }
+
+        if (impl_->hasQuery) {
+            buffer << '?' << impl_->query;
+        }
+
+        if (impl_->hasFragment) {
+            buffer << '#' << impl_->fragment;
+        }
+
+        return buffer.str();
+    }
+
 }

@@ -154,6 +154,16 @@ namespace Uri {
         bool ContainsRelativePath() const;
 
         /**
+         * This method returns an indication of whether or not the
+         * URI includes a fragment.
+         *
+         * @return
+         *     An indication of whether or not the
+         *     URI includes a fragment is returned.
+         */
+        bool HasFragment() const;
+
+        /**
          * This method returns the "fragment" element of the URI
          *
          * @return
@@ -163,6 +173,16 @@ namespace Uri {
          *      Return "" if no "fragment" element in the URI
          */
         std::string GetFragment() const;
+
+        /**
+         * This method returns an indication of whether or not the
+         * URI includes a query.
+         *
+         * @return
+         *     An indication of whether or not the
+         *     URI includes a query is returned.
+         */
+        bool HasQuery() const;
 
         /**
          * This method returns the "query" element of the URI
@@ -194,6 +214,87 @@ namespace Uri {
          *      The resolved target URI is returned.
          */
         Uri Resolve(const Uri& relativeReference) const;
+
+        /**
+         * This method sets the scheme element of the URI.
+         *
+         * @param[in] scheme
+         *      This is the scheme to set for the URI.
+         */
+        void SetScheme(const std::string& scheme);
+
+        /**
+         * This method sets the userinfo element of the URI.
+         *
+         * @param[in] userinfo
+         *      This is the userinfo to set for the URI.
+         */
+        void SetUserInfo(const std::string& userinfo);
+
+        /**
+         * This method sets the host element of the URI.
+         *
+         * @param[in] host
+         *      This is the host to set for the URI.
+         */
+        void SetHost(const std::string& host);
+
+        /**
+         * This method sets the port element of the URI.
+         *
+         * @param[in] port
+         *      This is the port to set for the URI.
+         */
+        void SetPort(uint16_t port);
+
+        /**
+         * This method clears the port element of the URI.
+         */
+        void ClearPort();
+
+        /**
+         * This method sets the path element of the URI.
+         *
+         * @param[in] path
+         *      This is the path to set for the URI.
+         */
+        void SetPath(const std::vector<std::string>& path);
+
+        /**
+         * This method sets the query element of the URI.
+         *
+         * @param[in] query
+         *      This is the query to set for the URI.
+         */
+        void SetQuery(const std::string& query);
+
+        /**
+         * This method removes the query element from the URI.
+         */
+        void ClearQuery();
+
+        /**
+         * This method sets the fragment element of the URI.
+         *
+         * @param[in] fragment
+         *      This is the fragment to set for the URI.
+         */
+        void SetFragment(const std::string& fragment);
+
+        /**
+         * This method removes the fragment element from the URI.
+         */
+        void ClearFragment();
+
+        /**
+         * This method constructs and returns the string
+         * rendering of the URI, according to the rules in
+         * RFC 3986 (https://tools.ietf.org/html/rfc3986).
+         *
+         * @return
+         *      The string rendering of the URI is returned.
+         */
+        std::string GenerateString() const;
 
         // Private properties
     private:
