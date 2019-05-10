@@ -3,7 +3,7 @@
  *
  * This module declares the Uri::CharacterSet class.
  *
- * © 2019 by YaMing Wu
+ * 2019 by YaMing Wu
  */
 
 #include "CharacterSet.hpp"

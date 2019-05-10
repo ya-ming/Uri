@@ -6,7 +6,7 @@
  *
  * This module declares the Uri::PercentEncodedCharacterDecoder class.
  *
- * © 2019 by YaMing Wu
+ * 2019 by YaMing Wu
  */
 
 #include <memory>

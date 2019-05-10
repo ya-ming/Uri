@@ -3,7 +3,7 @@
  *
  * This module contains the unit tests of the Uri::NormalizeCaseInsensitiveStringTests class.
  *
- * © 2019 YaMing Wu
+ * 2019 YaMing Wu
  */
 
 #include <gtest/gtest.h>

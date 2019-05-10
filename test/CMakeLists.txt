@@ -1,6 +1,6 @@
 # CMakeLists.txt for UriTests
 #
-# © 2018 by Richard Walters
+# 2019 by YaMing Wu
 
 cmake_minimum_required(VERSION 3.8)
 set(This UriTests)

@@ -1,6 +1,6 @@
 # CMakeLists.txt for Uri
 #
-# © 2019 by YaMing Wu
+# 2019 by YaMing Wu
 
 cmake_minimum_required(VERSION 3.8)
 set(This Uri)

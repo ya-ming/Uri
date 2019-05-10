@@ -3,7 +3,7 @@
  *
  * This module contains the implementation of the Uri::Uri class.
  *
- * © 2019 by YaMing Wu
+ * 2019 by YaMing Wu
  */
 
 #include <algorithm>
@@ -550,6 +550,60 @@ namespace {
             }
         }
         return true;
+    }
+
+    /**
+     * This function returns the hex digit that corresponds
+     * to the given value.
+     *
+     * @param[in] value
+     *      This is the value to convert to a hex digit.
+     *
+     * @return
+     *      The hex digit corresponding to the given value is returned.
+     */
+    char MakeHexDigit(unsigned int value) {
+        if (value < 10) {
+            return (char)(value + '0');
+        }
+        else {
+            return (char)(value - 10 + 'A');
+        }
+    }
+
+    /**
+     * This method encodes the given URI element.
+     * What we are calling a "URI element" is any part of the URI.
+     * which is a sequence of characters that:
+     * - may be percent-encoded
+     * - if not percent-encoded, are in a restricted set of characters
+     *
+     * @param[in] element
+     *      This is the element to encode.
+     *
+     * @param[in] allowedCharacters
+     *      This is the set of characters that do not need to
+     *      be percent-encoded.
+     *
+     * @return
+     *      The encoded element is returned.
+     */
+    std::string EncodeElement(
+        const std::string& element,
+        const Uri::CharacterSet& allowedCharacters
+    ) {
+        std::string encodedElement;
+        for (auto c : element) {
+            if (allowedCharacters.Contains(c)) {
+                encodedElement.push_back(c);
+            }
+            else {
+                encodedElement.push_back('%');
+                encodedElement.push_back(MakeHexDigit((unsigned int)c >> 4));
+                encodedElement.push_back(MakeHexDigit((unsigned int)c & 0x0F));
+            }
+        }
+        return encodedElement;
     }
 }
 
@@ -1269,6 +1323,11 @@ namespace Uri {
         return impl_->scheme;
     }
 
+    bool Uri::IsRelativeReference() const
+    {
+        return impl_->scheme.empty();
+    }
+
     std::string Uri::GetUserInfo() const
     {
         return impl_->userInfo;
@@ -1277,11 +1336,6 @@ namespace Uri {
     std::string Uri::GetHost() const
     {
         return impl_->host;
-    }
-
-    std::vector<std::string> Uri::GetPath() const
-    {
-        return impl_->path;
     }
 
     bool Uri::HasPort() const
@@ -1294,23 +1348,14 @@ namespace Uri {
         return impl_->port;
     }
 
-    bool Uri::IsRelativeReference() const
+    std::vector<std::string> Uri::GetPath() const
     {
-        return impl_->scheme.empty();
+        return impl_->path;
     }
 
     bool Uri::ContainsRelativePath() const
     {
         return !impl_->IsPathAbsolute();
-    }
-
-    bool Uri::HasFragment() const {
-        return impl_->hasFragment;
-    }
-
-    std::string Uri::GetFragment() const
-    {
-        return impl_->fragment;
     }
 
     bool Uri::HasQuery() const {
@@ -1320,6 +1365,15 @@ namespace Uri {
     std::string Uri::GetQuery() const
     {
         return impl_->query;
+    }
+
+    bool Uri::HasFragment() const {
+        return impl_->hasFragment;
+    }
+
+    std::string Uri::GetFragment() const
+    {
+        return impl_->fragment;
     }
 
     /*
@@ -1448,15 +1502,15 @@ namespace Uri {
             buffer << "//";
 
             if (!impl_->userInfo.empty()) {
-                buffer << impl_->userInfo << '@';
+                buffer << EncodeElement(impl_->userInfo, USER_INFO_NOT_PCT_ENCODED) << '@';
             }
 
             if (!impl_->host.empty()) {
                 if (ValidateIpv6Address(impl_->host)) {
-                    buffer << '[' << impl_->host << ']';
+                    buffer << '[' << NormalizeCaseInsensitiveString(impl_->host) << ']';
                 }
                 else {
-                    buffer << impl_->host;
+                    buffer << EncodeElement(impl_->host, REG_NAME_NOT_PCT_ENCODED);
                 }
             }
 
@@ -1475,7 +1529,7 @@ namespace Uri {
 
         size_t i = 0;
         for (const auto& segment : impl_->path) {
-            buffer << segment;
+            buffer << EncodeElement(segment, PCHAR_NOT_PCT_ENCODED);
             if (i + 1 < impl_->path.size()) {
                 buffer << '/';
             }
@@ -1483,11 +1537,11 @@ namespace Uri {
         }
 
         if (impl_->hasQuery) {
-            buffer << '?' << impl_->query;
+            buffer << '?' << EncodeElement(impl_->query, QUERY_OR_FRAGMENT_NOT_PCT_ENCODED);
         }
 
         if (impl_->hasFragment) {
-            buffer << '#' << impl_->fragment;
+            buffer << '#' << EncodeElement(impl_->fragment, QUERY_OR_FRAGMENT_NOT_PCT_ENCODED);
         }
 
         return buffer.str();
